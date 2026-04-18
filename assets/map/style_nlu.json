@@ -1,0 +1,23 @@
+{
+  "version": 8,
+  "name": "NLU Echo",
+  "sources": {
+    "trackasia-tiles": {
+      "type": "raster",
+      "tiles": [
+        "https://maps.track-asia.com/styles/v1/streets.json?key=dba0fc3359f300e4d5917746880615a4ae"
+      ],
+      "tileSize": 256,
+      "scheme": "xyz",
+      "minzoom": 0,
+      "maxzoom": 22
+    }
+  },
+  "layers": [
+    {
+      "id": "trackasia-layer",
+      "type": "raster",
+      "source": "trackasia-tiles"
+    }
+  ]
+}

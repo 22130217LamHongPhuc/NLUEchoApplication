@@ -1,0 +1,9 @@
+class AppException {
+  final String message;
+  final String? code;
+
+  AppException(this.message, this.code);
+
+  @override
+  String toString() => message;
+}
