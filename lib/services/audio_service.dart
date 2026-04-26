@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
@@ -58,6 +59,12 @@ class AudioNoteService {
     await _player.play();
   }
 
+  Future<void> playAudioFromPath(String path) async {
+    await stopPlayback();
+    await _player.setFilePath(path);
+    await _player.play();
+  }
+
   Future<void> playAudio() async {
     final path = _lastFilePath;
     if (path == null || !File(path).existsSync()) {
@@ -109,8 +116,5 @@ class AudioNoteService {
 
   }
 
-
-
-
-
 }
+

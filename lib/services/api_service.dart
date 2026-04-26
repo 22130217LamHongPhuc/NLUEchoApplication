@@ -1,3 +1,4 @@
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -10,6 +11,7 @@ import '../core/utils/api_respone.dart';
 import '../features/auth/models/login_data.dart';
 import '../features/echo/models/create_echo_model.dart';
 import '../features/echo/models/nearby_campus_location.dart';
+import '../features/echo_detail/models/echo_detail.dart';
 import '../features/map/models/echo_preview.dart';
 import 'local_storeage_service.dart';
 
@@ -19,10 +21,10 @@ String baseUrl() {
   }
 
   if (Platform.isAndroid) {
-    return "https://hayden-nonpapal-twirly.ngrok-free.dev/api"; // assume emulator
+    return "http://192.168.100.26:8080/api"; // assume emulator
   }
 
-  return "https://hayden-nonpapal-twirly.ngrok-free.dev/api";
+  return "http://192.168.100.26:8080/api"; // assume emulator
 }
 
 final dioProvider = Provider<Dio>((ref) {
@@ -174,6 +176,43 @@ class ApiService {
     } on DioException catch (e) {
       debugPrint("Fetch echoes error: ${e.response?.data ?? e.message}");
       return ApiResponse<List<EchoPreview>>.fromJson(
+        e.response?.data as Map<String, dynamic>,
+      );
+    }
+  }
+
+  Future<ApiResponse<EchoDetail>> fetchEchoDetail(int echoId) async {
+    try {
+      debugPrint("Fetching echo detail for echoId: $echoId");
+      final response = await dio.get('/echo/$echoId');
+      final result = ApiResponse<EchoDetail>.fromJson(
+        response.data as Map<String, dynamic>,
+        fromJsonT: (json) => EchoDetail.fromJson(json as Map<String, dynamic>),
+      );
+
+      debugPrint("Fetch echo detail response: ${response.data}");
+      return result;
+    } on DioException catch (e) {
+      debugPrint("Fetch echo detail error: ${e.response?.data ?? e.message}");
+      return ApiResponse<EchoDetail>.fromJson(
+        e.response?.data as Map<String, dynamic>,
+      );
+    }
+  }
+
+  Future<ApiResponse<Bool>> likeEchoDetail(int echoId,int userId) async {
+    try {
+      debugPrint("Liking echo detail for echoId: $echoId, userId: $userId");
+      final response = await dio.post('/echo/$echoId/like', data: {'userId': userId});
+      final result = ApiResponse<Bool>.fromJson(
+        response.data as Map<String, dynamic>
+      );
+
+      debugPrint("Like echo detail response: ${response.data}");
+      return result;
+    } on DioException catch (e) {
+      debugPrint("Like echo detail error: ${e.response?.data ?? e.message}");
+      return ApiResponse<Bool>.fromJson(
         e.response?.data as Map<String, dynamic>,
       );
     }

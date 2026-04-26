@@ -1,7 +1,10 @@
 
 
+import 'dart:ffi';
+
 import 'package:echo_nlu/core/enums/echo_type.dart';
 import 'package:echo_nlu/core/utils/api_respone.dart';
+import 'package:echo_nlu/features/echo_detail/models/echo_detail.dart';
 import 'package:echo_nlu/features/map/models/echo_preview.dart';
 import 'package:echo_nlu/services/api_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -69,6 +72,9 @@ abstract class EchoRepository {
     required double longitude,
     required double latitude
   });
+  Future<ApiResponse<EchoDetail>> fetchEchoDetail(int echoId);
+  Future<ApiResponse<Bool>> likeEchoDetail(int echoId,int userId);
+
 }
 
 class EchoRepositoryImpl implements EchoRepository {
@@ -77,20 +83,34 @@ class EchoRepositoryImpl implements EchoRepository {
   EchoRepositoryImpl({required this.apiService});
 
   @override
-  Future<ApiResponse<CreateEchoModel?>> createEcho(CreateEchoRequest request) async {
+  Future<ApiResponse<CreateEchoModel?>> createEcho(
+      CreateEchoRequest request) async {
     return await apiService.createEcho(request);
   }
 
   @override
   Future<ApiResponse<List<EchoPreview>>> fetchEchoes(
-      {required int page, required int limit, required double longitude, required double latitude}
-      ) {
-      return apiService.fetchEchoes(
+      {required int page, required int limit, required double longitude, required double latitude}) {
+    return apiService.fetchEchoes(
         page,
         limit,
         longitude,
         latitude
-      );
+    );
+  }
+
+
+
+  @override
+  Future<ApiResponse<EchoDetail>> fetchEchoDetail(int echoId) async {
+    final response = await apiService.fetchEchoDetail(echoId);
+    return response;
+  }
+
+  @override
+  Future<ApiResponse<Bool>> likeEchoDetail(int echoId, int userId) async{
+    final response = await apiService.likeEchoDetail(echoId,userId);
+    return response;
   }
 }
 

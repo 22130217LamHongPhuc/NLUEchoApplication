@@ -65,7 +65,9 @@ final appRouter = GoRouter(
         builder: (context, state)  {
           // int echoId = int.parse(state.pathParameters['echoId']!);
           return EchoDetailScreen(
-            echoId: 1,
+            echoId: 2,
+            echoType: EchoType.audio,
+            distance: 10.0,
           );
         }
     )
