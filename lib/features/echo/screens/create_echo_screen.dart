@@ -21,7 +21,10 @@ import '../../../core/utils/toast_message.dart';
 class CreateEchoScreen extends ConsumerStatefulWidget {
   final EchoType echoType;
 
-  const CreateEchoScreen({super.key, required this.echoType});
+  const CreateEchoScreen({
+    super.key,
+    required this.echoType,
+  });
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() {

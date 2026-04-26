@@ -14,6 +14,11 @@ class AppInforRouter {
   static const String createEchoPath = '/create_text_image_echo';
   static const String createEchoName = 'create_text_image_echo';
 
+  static const String echoDetailPath = '/echo_detail';
+
+  static const String echoDetailName = 'echo_detail';
+
+
 
 
 }

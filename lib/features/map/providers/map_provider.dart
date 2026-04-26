@@ -1,5 +1,6 @@
 
 
+import 'package:echo_nlu/repositories/echo_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -10,10 +11,11 @@ final userLocationProvider = StreamProvider<Position>((ref) {
     return Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 5, // Cập nhật mỗi khi di chuyển 5m
+        distanceFilter: 5,
       ),
     );
 });
 
-final mapHomeProvider =
-NotifierProvider<MapHomeController, MapHomeState>(MapHomeController.new);
+final mapHomeProvider = NotifierProvider<MapHomeController, MapHomeState>(
+  MapHomeController.new,
+);

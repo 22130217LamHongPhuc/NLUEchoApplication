@@ -1,7 +1,7 @@
+import 'package:echo_nlu/features/map/models/echo_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:trackasia_gl/trackasia_gl.dart';
 
-enum EchoType { unlocked, locked, capsule, ghost }
 
 enum NluAccessState {
   insideNLU,
@@ -9,25 +9,6 @@ enum NluAccessState {
   outsideNLU,
 }
 
-class EchoPreview {
-  final String id;
-  final String title;
-  final String distanceText;
-  final EchoType type;
-  final int likes;
-  final int comments;
-  final LatLng location;
-
-  const EchoPreview({
-    required this.id,
-    required this.title,
-    required this.distanceText,
-    required this.type,
-    required this.likes,
-    required this.comments,
-    required this.location,
-  });
-}
 
 @immutable
 class MapHomeState {
@@ -35,20 +16,30 @@ class MapHomeState {
   final LatLng? userLocation;
   final int selectedFilter;
   final String? selectedEchoId;
+  final EchoPreview? selectedEcho;
   final NluAccessState accessState;
   final bool hasLocationPermission;
   final String? errorMessage;
+  final List<EchoPreview> echoPreviews;
 
-
-
+  final List<EchoPreview> nearbyEchoes;
+  final EchoPreview? nearestEcho;
+  final bool isGuiding;
+  final double? guidingDistance;
   const MapHomeState({
     this.isLoadingLocation = false,
     this.userLocation,
     this.selectedFilter = 0,
     this.selectedEchoId ,
+    this.selectedEcho,
     this.accessState = NluAccessState.outsideNLU,
     this.hasLocationPermission = false,
     this.errorMessage,
+    this.echoPreviews = const [],
+    this.nearbyEchoes = const [],
+    this.nearestEcho,
+    this.isGuiding = false,
+    this.guidingDistance,
   });
 
   MapHomeState copyWith({
@@ -56,19 +47,33 @@ class MapHomeState {
     LatLng? userLocation,
     int? selectedFilter,
     String? selectedEchoId,
+    EchoPreview ? selectedEcho,
     NluAccessState? accessState,
     bool? hasLocationPermission,
     bool clearUserLocation = false,
+    bool clearSelectedEcho = false,
     String? errorMessage,
+    bool clearErrorMessage = false,
+    List<EchoPreview>? echoPreviews,
+    List<EchoPreview>? nearbyEchoes,
+    EchoPreview? nearestEcho,
+    bool? isGuiding,
+    double? guidingDistance,
   }) {
     return MapHomeState(
       isLoadingLocation: isLoadingLocation ?? this.isLoadingLocation,
       userLocation: clearUserLocation ? null : (userLocation ?? this.userLocation),
       selectedFilter: selectedFilter ?? this.selectedFilter,
-      selectedEchoId: selectedEchoId ?? this.selectedEchoId,
       accessState: accessState ?? this.accessState,
       hasLocationPermission: hasLocationPermission ?? this.hasLocationPermission,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      echoPreviews: echoPreviews ?? this.echoPreviews,
+      selectedEchoId: clearSelectedEcho ? null : (selectedEchoId ?? this.selectedEchoId),
+      selectedEcho: clearSelectedEcho ? null : (selectedEcho ?? this.selectedEcho),
+      nearbyEchoes: nearbyEchoes ?? this.nearbyEchoes,
+      nearestEcho: nearestEcho ?? this.nearestEcho,
+      isGuiding: isGuiding ?? this.isGuiding,
+      guidingDistance: guidingDistance ?? this.guidingDistance,
     );
   }
 }

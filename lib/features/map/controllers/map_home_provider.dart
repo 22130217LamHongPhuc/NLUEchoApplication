@@ -1,12 +1,14 @@
 import 'dart:typed_data';
 import 'dart:ui';
 
+import 'package:echo_nlu/features/map/widgets/top_panel_floating.dart';
+import 'package:echo_nlu/repositories/echo_repository.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:trackasia_gl/trackasia_gl.dart';
 
+import '../models/echo_preview.dart';
 import 'map_home_state.dart';
 
 
@@ -18,75 +20,39 @@ class MapHomeController extends Notifier<MapHomeState> {
 
   static const double nluInsideRadiusInMeters = 1800;
   static const double nluNearRadiusInMeters = 2800;
+  static const double distanceToShowNearbyEchoesInMeters = 150;
 
   static const double echoUnlockRadiusInMeters = 60;
 
-  final List<String> filters = const ['Tất cả', 'Đã mở', 'Đang khóa'];
-
-  final List<EchoPreview> _allEchoes = const [
-    EchoPreview(
-      id: '1',
-      title: 'Chúc bạn thi thật tốt ở thư viện nhé!',
-      distanceText: '12m',
-      type: EchoType.unlocked,
-      likes: 128,
-      comments: 32,
-      location: LatLng(10.8701, 106.7889), // Cách ~38m về phía Đông Bắc
-    ),
-    EchoPreview(
-      id: '2',
-      title: 'Có một bí mật ở khu nhà A7...',
-      distanceText: '34m',
-      type: EchoType.locked,
-      likes: 87,
-      comments: 14,
-      location: LatLng(10.8695, 106.7885), // Cách ~40m về phía Tây Nam
-    ),
-    EchoPreview(
-      id: '3',
-      title: 'Hẹn gặp lại chính mình ngày tốt nghiệp.',
-      distanceText: 'Time Capsule',
-      type: EchoType.capsule,
-      likes: 211,
-      comments: 41,
-      location: LatLng(10.8699, 106.7883), // Cách ~45m về phía Tây Bắc
-    ),
-    EchoPreview(
-      id: '4',
-      title: 'Góc học tập lý tưởng tại Nông Lâm',
-      distanceText: '15m',
-      type: EchoType.unlocked,
-      likes: 56,
-      comments: 8,
-      location: LatLng(10.8697, 106.7891), // Cách ~44m về phía Đông
-    ),
+  final List<MapFilterItem> filters = [
+    MapFilterItem(id: 0, label: 'Tất cả'),
+    MapFilterItem(id: 1, label: 'Mới nhất'),
+    MapFilterItem(id: 2, label: 'Gần tôi'),
+    MapFilterItem(id: 3, label: 'Đang hot'),
   ];
+
+  final List<EchoPreview> _allEchoes =  [];
   final Set<String> _addedImageKeys = {};
   final Map<String, String> _echoToSymbol = {};
+  late final EchoRepository echoRepository;
+
+
 
 
   @override
   MapHomeState build() {
+    echoRepository = ref.read(echoRepositoryProvider);
     Future.microtask(init);
     return const MapHomeState(isLoadingLocation: true);
   }
 
-  List<EchoPreview> get filteredEchoes {
-    final selectedFilter = state.selectedFilter;
-    switch (selectedFilter) {
-      case 1:
-        return _allEchoes.where((e) => e.type == EchoType.unlocked).toList();
-      case 2:
-        return _allEchoes.where((e) => e.type == EchoType.locked).toList();
-      default:
-        return _allEchoes;
-    }
-  }
 
 
 
   Future<void> init() async {
     await _determineUserLocation();
+    if (state.userLocation == null) return;
+    await renderEchoList();
   }
 
 
@@ -95,7 +61,6 @@ class MapHomeController extends Notifier<MapHomeState> {
     debugPrint("Map created, controller: $controller");
     _mapController = controller;
     controller.onSymbolTapped.add(_onSymbolTapped);
-
   }
 
 
@@ -197,9 +162,6 @@ class MapHomeController extends Notifier<MapHomeState> {
   bool canCreateEcho() => isInsideNLU;
 
 
-  // just you know,
-  // i want to sleep but i have to finish this project before the deadline,
-  // so i will do this.
   String openButtonText() {
     if (state.isLoadingLocation) return 'Đang xác định vị trí...';
     if (!state.hasLocationPermission) return 'Bật quyền vị trí để tiếp tục';
@@ -229,24 +191,60 @@ class MapHomeController extends Notifier<MapHomeState> {
     final controller = _mapController;
     if (controller == null) return;
 
-    for (final echo in filteredEchoes) {
-      final (color, icon, key) = switch (echo.type) {
-        EchoType.unlocked => (Colors.lightGreen, Icons.lock_open, 'marker-unlocked'),
-        EchoType.locked   => (Colors.grey, Icons.lock, 'marker-locked'),
-        EchoType.capsule  => (Colors.amber, Icons.access_alarm, 'marker-capsule'),
-        // TODO: Handle this case.
-        EchoType.ghost => (Colors.grey, Icons.private_connectivity, 'marker-ghost'),
-      };
+    final response = await echoRepository.fetchEchoes(
+      page: 0,
+      limit: 20,
+      longitude: state.userLocation!.longitude,
+      latitude: state.userLocation!.latitude,
+    );
+
+    if(!response.success || response.data == null) {
+      debugPrint("Failed to fetch echoes: ${response.message}");
+      state = state.copyWith(errorMessage: response.message);
+      return;
+    }
+
+    state = state.copyWith(
+      echoPreviews: response.data!,
+      nearbyEchoes: response.data!.where((echo) => distanceFromUserToEcho(echo) <= distanceToShowNearbyEchoesInMeters).toList(),
+      nearestEcho: response.data![0]
+    );
+
+    for (final echo in state.echoPreviews) {
+      final markerConfig = _getMarkerStyle(echo);
 
       await addEchoMarker(
         controller,
-        echo.id,
+        echo.id.toString(),
         echo.location,
-        color: color,
-        icon: icon,
-        markerKey: key,
+        color: markerConfig.color,
+        icon: markerConfig.icon,
+        markerKey: markerConfig.key,
       );
     }
+  }
+
+  ({Color color, IconData icon, String key}) _getMarkerStyle(EchoPreview echo) {
+    final isAnonymous = echo.anonymous == true;
+    final isCapsule = echo.capsule == true;
+
+    Color baseColor = Colors.lightGreen;
+    IconData baseIcon = Icons.location_on;
+    String key = 'marker-normal';
+
+    if (isCapsule) {
+      baseColor = Colors.amber;
+      key = 'marker-capsule';
+    } else if (isAnonymous) {
+      baseColor = Colors.grey;
+      key = 'marker-ghost';
+    }
+
+    return (
+    color: baseColor,
+    icon: baseIcon,
+    key: key,
+    );
   }
 
   Future<Uint8List> _createMarkerImage({
@@ -265,16 +263,14 @@ class MapHomeController extends Notifier<MapHomeState> {
     canvas.drawCircle(
       center,
       outerRadius,
-      Paint()..color = color.withOpacity(0.22),
+      Paint()..color = color.withValues(alpha: 0.22),
     );
 
-    // === Inner circle with glow shadow ===
-    // Glow: dùng MaskFilter blur thay cho boxShadow
     canvas.drawCircle(
       center,
       innerRadius,
       Paint()
-        ..color = color.withOpacity(0.66)
+        ..color = color.withValues(alpha: 0.66)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18),
     );
 
@@ -285,7 +281,6 @@ class MapHomeController extends Notifier<MapHomeState> {
       Paint()..color = color,
     );
 
-    // === Icon (cùng tỉ lệ: icon size 13 / baseSize 40 = 0.325) ===
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
     textPainter.text = TextSpan(
       text: String.fromCharCode(icon.codePoint),
@@ -342,57 +337,13 @@ class MapHomeController extends Notifier<MapHomeState> {
     }
   }
 
-  Future<void> addTestMarkersNearUser() async {
-    debugPrint("Adding test markers near fixed location...");
 
-    final controller = _mapController;
-    if (controller == null) return;
-
-    const user = LatLng(
-      10.869937279654504,
-      106.78829400171766,
-    );
-
-    debugPrint(" Fixed user: ${user.latitude}, ${user.longitude}");
-
-    const offset = 0.00015;
-
-    final points = [
-      const LatLng(10.869937279654504 + offset, 106.78829400171766),
-      const LatLng(10.869937279654504 - offset, 106.78829400171766),
-      const LatLng(10.869937279654504, 106.78829400171766 + offset),
-      const LatLng(10.869937279654504, 106.78829400171766 - offset),
-    ];
-
-    for (final p in points) {
-      await controller.addCircle(
-        CircleOptions(
-          geometry: p,
-          circleRadius: 8,
-          circleOpacity: 0.9,
-        ),
-      );
-
-      final symbol = await controller.addSymbol(
-        SymbolOptions(
-          geometry: p,
-          iconSize: 1.8,
-        ),
-      );
-
-      debugPrint("Added marker: $symbol");
-    }
-
-    await controller.animateCamera(
-      CameraUpdate.newLatLngZoom(user, 18),
-    );
-  }
 
   void _onSymbolTapped(Symbol argument) {
     final echoId = _echoToSymbol[argument.id];
     if (echoId != null) {
       debugPrint("Tapped symbol for echoId: $echoId");
-      selectEchoById(echoId);
+      selectEchoById(int.parse(echoId));
     } else {
       debugPrint(
           "Tapped symbol with id ${argument.id} has no associated echoId");
@@ -410,42 +361,110 @@ class MapHomeController extends Notifier<MapHomeState> {
   }
 
 
-  void selectEchoById(String echoId) {
+  void selectEchoById(int echoId) {
+    debugPrint("Selecting echo with id: $echoId");
     if (state.accessState == NluAccessState.outsideNLU) {
       state = state.copyWith(
-          errorMessage: 'Bạn cần ở trong khuôn viên NLU để tương tác với Echo.'
+        errorMessage: 'Bạn cần ở trong khuôn viên NLU để tương tác với Echo.',
       );
-    } else if (state.accessState == NluAccessState.nearNLU) {
+      return;
+    }
+
+    if (state.accessState == NluAccessState.nearNLU) {
       state = state.copyWith(
-          errorMessage: 'Bạn đang ở gần NLU. Hãy vào sâu hơn để tương tác với Echo.'
+        errorMessage: 'Bạn đang ở gần NLU. Hãy vào sâu hơn để tương tác với Echo.',
       );
-    } else {
-      final echo = _allEchoes.firstWhere((e) => e.id == echoId);
-      debugPrint("Selecting echo with id: $echoId, type: ${echo.type}, location: ${echo.location.latitude}, ${echo.location.longitude}");
+      return;
+    }
 
-      if (echo.type == EchoType.locked) {
-        state = state.copyWith(
-            errorMessage: 'Echo này đang bị khóa. Hãy thử Echo khác nhé!'
-        );
-      } else if (echo.type == EchoType.unlocked) {
-        final userLoc = state.userLocation!;
-        final distance = distanceBetweenMarker(userLoc, echo.location);
-        if (distance > echoUnlockRadiusInMeters) {
-          state = state.copyWith(
-              errorMessage: 'Bạn cần đến gần thêm Echo khoảng ${(distance - echoUnlockRadiusInMeters).floor()}m này để tương tác.'
-          );
-        } else {
-        state = state.copyWith(
-            selectedEchoId: echoId,
-            errorMessage: null,
-        );
-        }
 
+
+  final echo = state.echoPreviews.firstWhere((e) => e.id == echoId);
+
+  
+
+    // if (echo.capsule) {
+    //   final now = DateTime.now();
+    //   if (echo.unlockTime != null && echo.unlockTime!.isAfter(now)) {
+    //     state = state.copyWith(
+    //       errorMessage: 'Kén chưa đến thời gian nở.',
+    //       selectedEchoId: null,
+    //     );
+    //     return;
+    //   }
+    // }
+
+    final userLoc = state.userLocation;
+    if (userLoc == null) {
+      state = state.copyWith(
+        errorMessage: 'Không thể xác định vị trí hiện tại của bạn.',
+        selectedEchoId: null,
+      );
+      return;
+    }
+
+    final distance = distanceBetweenMarker(userLoc, echo.location);
+
+    if (distance > echoUnlockRadiusInMeters) {
+      final needMore = (distance - echoUnlockRadiusInMeters).ceil();
+      state = state.copyWith(
+        errorMessage:
+        'Bạn cần đến gần Echo thêm khoảng ${needMore}m để xem.',
+        selectedEchoId: null,
+      );
+      return;
+    }
+
+    state = state.copyWith(
+      selectedEcho: echo,
+      selectedEchoId: echoId.toString(),
+      clearErrorMessage: true,
+    );
+  }
+
+  void clearSelectedEcho() {
+    debugPrint("Clearing selected echo");
+    state = state.copyWith(
+    clearSelectedEcho: true,
+    );
+  }
+
+
+  void selectFilter(int value) {
+    state = state.copyWith(selectedFilter: value);
+  }
+
+  void guideToEcho(EchoPreview echo) {
+      final userLoc = state.userLocation;
+      if (userLoc == null) {
+        state = state.copyWith(
+          errorMessage: 'Không thể xác định vị trí hiện tại của bạn.',
+        );
+        return;
+      }
+
+      final distance = distanceBetweenMarker(userLoc, echo.location);
+
+      if (distance > echoUnlockRadiusInMeters) {
+        state = state.copyWith(
+          isGuiding: true,
+          guidingDistance: distance,
+        );
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(echo.location, 16.5),
+        );
       } else {
         state = state.copyWith(
-          errorMessage: 'Echo này là Time Capsule, không thể mở được. Hãy thử tương tác với Echo khác nhé!'
+          selectedEcho: echo,
+          selectedEchoId: echo.id.toString(),
+          clearErrorMessage: true,
         );
       }
-    }
+  }
+
+  void openNearbyEchoesSheet() {
+      state = state.copyWith(
+        nearbyEchoes: state.echoPreviews.where((echo) => distanceFromUserToEcho(echo) <= nluNearRadiusInMeters).toList(),
+      );
   }
 }

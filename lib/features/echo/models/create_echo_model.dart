@@ -1,7 +1,7 @@
 import 'package:echo_nlu/core/enums/echo_type.dart';
 import 'package:echo_nlu/core/enums/visibility.dart';
 
-class EchoModel {
+class CreateEchoModel {
   final int id;
   final String? title;
   final String? content;
@@ -30,7 +30,7 @@ class EchoModel {
 
   final List<String> mediaUrls;
 
-  const EchoModel({
+  const CreateEchoModel({
     required this.id,
     this.title,
     this.content,
@@ -53,8 +53,8 @@ class EchoModel {
     required this.mediaUrls,
   });
 
-  factory EchoModel.fromJson(Map<String, dynamic> json) {
-    return EchoModel(
+  factory CreateEchoModel.fromJson(Map<String, dynamic> json) {
+    return CreateEchoModel(
       id: json['id'],
 
       title: json['title'],

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:echo_nlu/core/router/app_infor_router.dart';
+import 'package:echo_nlu/core/utils/toast_message.dart';
 import 'package:echo_nlu/features/map/controllers/map_home_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,8 +11,10 @@ import '../../echo/screens/choose_create_echo.dart';
 import '../controllers/map_home_provider.dart';
 import '../providers/map_provider.dart';
 import '../widgets/create_echo_fab.dart';
+import '../widgets/echo_preview_card.dart';
 import '../widgets/location_status_banner.dart';
-
+import '../widgets/near_by_guidance_card.dart';
+import '../widgets/top_panel_floating.dart';
 
 
 
@@ -19,29 +22,26 @@ class MapHomeScreen extends ConsumerStatefulWidget {
   const MapHomeScreen({super.key});
 
   @override
-  ConsumerState<ConsumerStatefulWidget> createState() => _MapHomeScreenState();
-
-
-
+  ConsumerState<MapHomeScreen> createState() => _MapHomeScreenState();
 }
 
 class _MapHomeScreenState extends ConsumerState<MapHomeScreen> {
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
+
+    Stream<int>.periodic(
+      const Duration(seconds: 5),
+          (count) => count,
+    );
+
     ref.listenManual(mapHomeProvider, (previous, next) {
-      if (next.errorMessage != null ) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.errorMessage!)),
-        );
-
-        return;
-      }
-
-       if(next.selectedEchoId != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mở xem trước Echo')),
+      if (next.errorMessage != null) {
+        showToast(
+          context,
+          message: next.errorMessage!,
+          backgroundColor: Colors.amberAccent,
+          icon: Icons.warning_amber_outlined,
         );
       }
     });
@@ -51,7 +51,6 @@ class _MapHomeScreenState extends ConsumerState<MapHomeScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(mapHomeProvider);
     final controller = ref.read(mapHomeProvider.notifier);
-
     final mediaQuery = MediaQuery.of(context);
 
     return Scaffold(
@@ -60,40 +59,31 @@ class _MapHomeScreenState extends ConsumerState<MapHomeScreen> {
       body: Stack(
         children: [
           TrackAsiaMap(
-            styleString: 'https://maps.track-asia.com/styles/v1/simple.json?key=dba0fc3359f300e4d5917746880615a4ae',
+            styleString:
+            'https://maps.track-asia.com/styles/v1/simple.json?key=dba0fc3359f300e4d5917746880615a4ae',
             initialCameraPosition: const CameraPosition(
               target: MapHomeController.nluCenter,
               zoom: 18.6,
             ),
-            minMaxZoomPreference: MinMaxZoomPreference(14, 20),
-            myLocationEnabled: state.accessState ==NluAccessState.insideNLU || state.accessState == NluAccessState.outsideNLU,
+            // minMaxZoomPreference: const MinMaxZoomPreference(14, 20),
+            myLocationEnabled: state.accessState == NluAccessState.insideNLU ||
+                state.accessState == NluAccessState.outsideNLU,
             onMapCreated: controller.onMapCreated,
-            onStyleLoadedCallback: () async {
-              await controller.renderEchoList();
-            },
-
           ),
 
-          const _MapPremiumOverlay(),
+          // const _MapPremiumOverlay(),
 
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Column(
                 children: [
-                  // _TopGlassBar(
-                  //   onNotificationTap: () {},
-                  //   onAvatarTap: () {},
-                  // ),
-                  // const SizedBox(height: 12),
-                  LocationStatusBanner(
-                    text: controller.locationBannerText(),
+                  TopFloatingPanel(
+                    statusText: controller.locationBannerText(),
                     accessState: state.accessState,
-                  ),
-                  const SizedBox(height: 12),
-                  _FilterChipsRow(
-                      filters: controller.filters,
-                      selectedIndex: state.selectedFilter
+                    filters: controller.filters,
+                    selectedIndex: state.selectedFilter,
+                    onFilterSelected: controller.selectFilter,
                   ),
                 ],
               ),
@@ -102,75 +92,41 @@ class _MapHomeScreenState extends ConsumerState<MapHomeScreen> {
 
           Positioned(
             right: 16,
-            bottom: mediaQuery.padding.bottom + 230,
-            child: Column(
-              children: [
-                _RoundGlassActionButton(
-                  icon: Icons.home_rounded,
-                  onTap: controller.focusToNLU,
-                ),
-                const SizedBox(height: 12),
-                _RoundGlassActionButton(
-                  icon: Icons.my_location_rounded,
-                  onTap: controller.focusToUser,
-                ),
-                const SizedBox(height: 12),
-                _RoundGlassActionButton(
-                  icon: Icons.layers_rounded,
-                  onTap: () {},
-                ),
-              ],
+            bottom: mediaQuery.padding.bottom + 240,
+            child: _MapQuickActions(
+              onFocusCampus: controller.focusToNLU,
+              onFocusUser: controller.focusToUser,
             ),
           ),
 
-          // ...echoes.map((echo) {
-          //
-          //   final visual = _markerVisualById(echo.id);
-          //
-          //   final disabled = !controller.isInsideNLU;
-          //   final faded = controller.isOutsideNLU;
-          //
-          //   return Positioned(
-          //     top: visual.top,
-          //     left: visual.left,
-          //     right: visual.right,
-          //     child: GestureDetector(
-          //       onTap: () => controller.selectEchoById(echo.id),
-          //       child: Opacity(
-          //         opacity: faded ? 0.45 : 1,
-          //         child: echo.id == currentEcho?.id
-          //             ? PulseEchoMarker(color: visual.color, icon: visual.icon)
-          //             : EchoMarker(color: visual.color, icon: visual.icon),
-          //       ),
-          //     ),
-          //   );
-          // }),
-
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: mediaQuery.padding.bottom + 96,
+            child: _MapBottomPanel(
+              state: state,
+              controller: controller,
+            ),
+          ),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: CreateEchoFab(
         enabled: controller.canCreateEcho(),
         onTap: () {
-          final messenger = ScaffoldMessenger.of(context);
-
           if (!controller.canCreateEcho()) {
-            messenger.showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Bạn cần có mặt trong khuôn viên NLU để tạo Echo.',
-                ),
-              ),
-            );
+            showToast(context, message: 'Bạn cần ở trong khuôn viên NLU để tạo Echo mới',
+                backgroundColor: Colors.amberAccent,
+               );
             return;
           }
+
           showEchoTypeSelectorSheet(
             context,
             onSelected: (type) {
-              context.push(AppInforRouter.createEchoPath,extra: type);
+              context.push(AppInforRouter.createEchoPath, extra: type);
             },
           );
-
         },
       ),
       bottomNavigationBar: const _BottomNavBar(),
@@ -178,6 +134,97 @@ class _MapHomeScreenState extends ConsumerState<MapHomeScreen> {
   }
 }
 
+class _MapQuickActions extends StatelessWidget {
+  final VoidCallback onFocusCampus;
+  final VoidCallback onFocusUser;
+
+  const _MapQuickActions({
+    required this.onFocusCampus,
+    required this.onFocusUser,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _RoundGlassActionButton(
+          icon: Icons.school_rounded,
+          onTap: onFocusCampus,
+        ),
+        const SizedBox(height: 12),
+        _RoundGlassActionButton(
+          icon: Icons.my_location_rounded,
+          onTap: onFocusUser,
+        ),
+      ],
+    );
+  }
+}
+
+class _MapBottomPanel extends StatelessWidget {
+  final MapHomeState state;
+  final MapHomeController controller;
+
+  const _MapBottomPanel({
+    required this.state,
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget child;
+
+    if (state.selectedEcho != null) {
+      child = EchoPreviewCard(
+        key: ValueKey('selected_${state.selectedEcho!.id}'),
+        echo: state.selectedEcho!,
+        onClose: controller.clearSelectedEcho,
+        onOpen: () {
+          context.push(
+            AppInforRouter.echoDetailPath,
+            extra: state.selectedEcho!,
+          );
+        },
+      );
+    } else if (state.nearestEcho != null) {
+      final echo = state.nearestEcho!;
+      final remaining =
+      (echo.distance - MapHomeController.echoUnlockRadiusInMeters).clamp(0, double.infinity);
+
+      child = NearbyGuidanceCard(
+        key: ValueKey('nearby_${echo.id}'),
+        nearbyCount: state.nearbyEchoes.length,
+        title: echo.title ?? 'Echo nearby',
+        distanceText: '${echo.distance.round()}m',
+        hintText: echo.distance <=
+                MapHomeController.echoUnlockRadiusInMeters
+            ? 'Bạn đã ở trong vùng mở Echo'
+            : 'Đi thêm ${remaining.round()}m để mở Echo',
+        onGoTo: () => controller.guideToEcho(echo),
+        onOpenList: (){},
+      );
+    } else {
+      child = EmptyDiscoveryCard(
+        key: const ValueKey('empty_discovery'),
+        onExploreCampus: controller.focusToNLU,
+      );
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 260),
+      transitionBuilder: (child, animation) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.18),
+            end: Offset.zero,
+          ).animate(animation),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+      child: child,
+    );
+  }
+}
 
 
 

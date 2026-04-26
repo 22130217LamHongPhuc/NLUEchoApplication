@@ -51,6 +51,8 @@ dependencies:
   record:
   just_audio:
   path_provider:
+  provider:
+  just_waveform:
 
 
 

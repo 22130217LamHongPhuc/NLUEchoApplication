@@ -1,6 +1,7 @@
 import 'package:echo_nlu/core/enums/echo_type.dart';
 import 'package:echo_nlu/features/auth/screens/login_screen.dart';
 import 'package:echo_nlu/features/auth/screens/register_screen.dart';
+import 'package:echo_nlu/features/echo_detail/screens/echo_detail_screen.dart';
 import 'package:echo_nlu/features/onboarding/screens/flash_screen.dart';
 import 'package:echo_nlu/features/onboarding/screens/on_board_screen.dart';
 import 'package:flutter/cupertino.dart';
@@ -12,7 +13,7 @@ import '../../features/permission/screens/location_permission_screen.dart';
 import 'app_infor_router.dart';
 
 final appRouter = GoRouter(
-  initialLocation: AppInforRouter.splashPath,
+  initialLocation: AppInforRouter.echoDetailPath,
   routes: [
     GoRoute(
       path: AppInforRouter.splashPath,
@@ -52,9 +53,24 @@ final appRouter = GoRouter(
       name: AppInforRouter.createEchoName,
       builder: (context, state)  {
         final EchoType echoType = state.extra as EchoType;
-        return CreateEchoScreen(echoType: echoType);
+        return CreateEchoScreen(
+          echoType: echoType
+        );
       }
+    ),
+
+    GoRoute(
+        path: AppInforRouter.echoDetailPath,
+        name: AppInforRouter.echoDetailName,
+        builder: (context, state)  {
+          // int echoId = int.parse(state.pathParameters['echoId']!);
+          return EchoDetailScreen(
+            echoId: 1,
+          );
+        }
     )
+
+
 
 
 
