@@ -19,7 +19,6 @@ class EchoDetail {
 
   final User user;
   final List<EchoMedia> media;
-  final List<Comment> comments;
 
   final DateTime createdAt;
 
@@ -39,7 +38,6 @@ class EchoDetail {
     required this.commentsCount,
     required this.user,
     required this.media,
-    required this.comments,
     required this.createdAt,
     this.locationName = '',
     this.isLike = false,
@@ -63,31 +61,42 @@ class EchoDetail {
       media: (json['media'] as List)
           .map((e) => EchoMedia.fromJson(e))
           .toList(),
-      comments: (json['comments'] as List)
-          .map((e) => Comment.fromJson(e))
-          .toList(),
       createdAt: DateTime.parse(json['createdAt']),
       isLike: json['like'] ?? false,
     );
   }
 
-  EchoDetail copyWith({required bool isLiked, required likeCount}) {
+ EchoDetail copyWith({
+    int? id,
+    String? title,
+    String? description,
+    bool? anonymous,
+    bool? capsule,
+    DateTime? unlockTime,
+    double? distance,
+    int? likes,
+    int? commentsCount,
+    User? user,
+    List<EchoMedia>? media,
+    DateTime? createdAt,
+    String? locationName,
+    bool? isLike,
+  }) {
     return EchoDetail(
-      id: id,
-      title: title,
-      description: description,
-      anonymous: anonymous,
-      capsule: capsule,
-      unlockTime: unlockTime,
-      distance: distance,
-      likes: likeCount,
-      commentsCount: commentsCount,
-      user: user,
-      media: media,
-      comments: comments,
-      createdAt: createdAt,
-      locationName: locationName,
-      isLike: isLiked,
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      anonymous: anonymous ?? this.anonymous,
+      capsule: capsule ?? this.capsule,
+      unlockTime: unlockTime ?? this.unlockTime,
+      distance: distance ?? this.distance,
+      likes: likes ?? this.likes,
+      commentsCount: commentsCount ?? this.commentsCount,
+      user: user ?? this.user,
+      media: media ?? this.media,
+      createdAt: createdAt ?? this.createdAt,
+      locationName: locationName ?? this.locationName,
+      isLike: isLike ?? this.isLike,
     );
   }
 }

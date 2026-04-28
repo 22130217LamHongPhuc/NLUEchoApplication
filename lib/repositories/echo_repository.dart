@@ -4,6 +4,7 @@ import 'dart:ffi';
 
 import 'package:echo_nlu/core/enums/echo_type.dart';
 import 'package:echo_nlu/core/utils/api_respone.dart';
+import 'package:echo_nlu/features/echo_detail/models/comment.dart';
 import 'package:echo_nlu/features/echo_detail/models/echo_detail.dart';
 import 'package:echo_nlu/features/map/models/echo_preview.dart';
 import 'package:echo_nlu/services/api_service.dart';
@@ -75,6 +76,10 @@ abstract class EchoRepository {
   Future<ApiResponse<EchoDetail>> fetchEchoDetail(int echoId);
   Future<ApiResponse<Bool>> likeEchoDetail(int echoId,int userId);
 
+  Future<ApiResponse<Comment>> addComment(int echoId, int userId, String content);
+
+  Future<ApiResponse<List<Comment>>> fetchComments(int echoId);
+
 }
 
 class EchoRepositoryImpl implements EchoRepository {
@@ -110,6 +115,18 @@ class EchoRepositoryImpl implements EchoRepository {
   @override
   Future<ApiResponse<Bool>> likeEchoDetail(int echoId, int userId) async{
     final response = await apiService.likeEchoDetail(echoId,userId);
+    return response;
+  }
+
+  @override
+  Future<ApiResponse<Comment>> addComment(int echoId, int userId, String content) {
+      final response = apiService.addComment(echoId, userId, content);
+      return response;
+  }
+
+  @override
+  Future<ApiResponse<List<Comment>>> fetchComments(int echoId) {
+    final response = apiService.fetchComments(echoId);
     return response;
   }
 }

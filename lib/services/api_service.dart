@@ -2,6 +2,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:echo_nlu/features/echo_detail/models/comment.dart';
 import 'package:echo_nlu/repositories/echo_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,10 +22,10 @@ String baseUrl() {
   }
 
   if (Platform.isAndroid) {
-    return "http://192.168.100.26:8080/api"; // assume emulator
+    return "https://hayden-nonpapal-twirly.ngrok-free.dev/api"; // assume emulator
   }
 
-  return "http://192.168.100.26:8080/api"; // assume emulator
+  return "http://192.168.1.6:8080/api"; // assume emulator
 }
 
 final dioProvider = Provider<Dio>((ref) {
@@ -135,12 +136,15 @@ class ApiService {
     }
   }
 
-  Future<ApiResponse<CreateEchoModel?>> createEcho(CreateEchoRequest request) async {
+  Future<ApiResponse<CreateEchoModel?>> createEcho(
+    CreateEchoRequest request,
+  ) async {
     try {
       final response = await dio.post('/echo/create', data: request.toJson());
       final result = ApiResponse<CreateEchoModel>.fromJson(
         response.data as Map<String, dynamic>,
-        fromJsonT: (json) => CreateEchoModel.fromJson(json as Map<String, dynamic>),
+        fromJsonT: (json) =>
+            CreateEchoModel.fromJson(json as Map<String, dynamic>),
       );
 
       debugPrint("Fetch create echo : ${response.data}");
@@ -153,22 +157,33 @@ class ApiService {
     }
   }
 
-  Future<ApiResponse<List<EchoPreview>>> fetchEchoes(int page, int limit,double longitude,double latitude) async {
+  Future<ApiResponse<List<EchoPreview>>> fetchEchoes(
+    int page,
+    int limit,
+    double longitude,
+    double latitude,
+  ) async {
     try {
-      debugPrint("Fetching echoes with longitude: $longitude, latitude: $latitude, page: $page, limit: $limit");
-      final response = await dio.get('/echo/echo-previews', queryParameters: {
-        'longitude': longitude,
-        'latitude': latitude,
-        'page': page,
-        'limit': limit
-      });
+      debugPrint(
+        "Fetching echoes with longitude: $longitude, latitude: $latitude, page: $page, limit: $limit",
+      );
+      final response = await dio.get(
+        '/echo/echo-previews',
+        queryParameters: {
+          'longitude': longitude,
+          'latitude': latitude,
+          'page': page,
+          'limit': limit,
+        },
+      );
       final result = ApiResponse<List<EchoPreview>>.fromJson(
         response.data as Map<String, dynamic>,
         fromJsonT: (json) {
           final dataList = json as List<dynamic>;
-          return dataList.map((item) =>
-              EchoPreview.fromJson(item as Map<String, dynamic>)).toList();
-        }
+          return dataList
+              .map((item) => EchoPreview.fromJson(item as Map<String, dynamic>))
+              .toList();
+        },
       );
 
       debugPrint("Fetch echoes response: ${response.data}");
@@ -200,12 +215,15 @@ class ApiService {
     }
   }
 
-  Future<ApiResponse<Bool>> likeEchoDetail(int echoId,int userId) async {
+  Future<ApiResponse<Bool>> likeEchoDetail(int echoId, int userId) async {
     try {
       debugPrint("Liking echo detail for echoId: $echoId, userId: $userId");
-      final response = await dio.post('/echo/$echoId/like', data: {'userId': userId});
+      final response = await dio.post(
+        '/echo/$echoId/likes',
+        data: {'userId': userId},
+      );
       final result = ApiResponse<Bool>.fromJson(
-        response.data as Map<String, dynamic>
+        response.data as Map<String, dynamic>,
       );
 
       debugPrint("Like echo detail response: ${response.data}");
@@ -213,6 +231,58 @@ class ApiService {
     } on DioException catch (e) {
       debugPrint("Like echo detail error: ${e.response?.data ?? e.message}");
       return ApiResponse<Bool>.fromJson(
+        e.response?.data as Map<String, dynamic>,
+      );
+    }
+  }
+
+  Future<ApiResponse<Comment>> addComment(
+    int echoId,
+    int userId,
+    String content,
+  ) async {
+    try {
+      debugPrint(
+        "Adding comment to echoId: $echoId, userId: $userId, content: $content",
+      );
+      final response = await dio.post(
+        '/echo/$echoId/comments',
+        data: {'userId': userId, 'content': content},
+      );
+      final result = ApiResponse<Comment>.fromJson(
+        response.data as Map<String, dynamic>,
+        fromJsonT: (json) => Comment.fromJson(json as Map<String, dynamic>),
+      );
+
+      debugPrint("Add comment response: ${response.data}");
+      return result;
+    } on DioException catch (e) {
+      debugPrint("Add comment error: ${e.response?.data ?? e.message}");
+      return ApiResponse<Comment>.fromJson(
+        e.response?.data as Map<String, dynamic>,
+      );
+    }
+  }
+
+  Future<ApiResponse<List<Comment>>> fetchComments(int echoId) async {
+    try {
+      debugPrint("Fetching comments for echoId: $echoId");
+      final response = await dio.get('/echo/$echoId/comments');
+      final result = ApiResponse<List<Comment>>.fromJson(
+        response.data as Map<String, dynamic>,
+        fromJsonT: (json) {
+          final dataList = json as List<dynamic>;
+          return dataList
+              .map((item) => Comment.fromJson(item as Map<String, dynamic>))
+              .toList();
+        },
+      );
+
+      debugPrint("Fetch comments response: ${response.data}");
+      return result;
+    } on DioException catch (e) {
+      debugPrint("Fetch comments error: ${e.response?.data ?? e.message}");
+      return ApiResponse<List<Comment>>.fromJson(
         e.response?.data as Map<String, dynamic>,
       );
     }

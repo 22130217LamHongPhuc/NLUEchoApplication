@@ -1,3 +1,4 @@
+import 'package:echo_nlu/features/echo_detail/controllers/echo_comment_controller.dart';
 import 'package:echo_nlu/features/echo_detail/controllers/echo_detail_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,3 +8,6 @@ final echoDetailProvider = NotifierProvider.autoDispose<EchoDetailController, Ec
   () => EchoDetailController(),
 );
 
+final echoCommentsProvider = NotifierProvider<EchoCommentController, EchoCommentState>(
+  () => EchoCommentController(),
+);
