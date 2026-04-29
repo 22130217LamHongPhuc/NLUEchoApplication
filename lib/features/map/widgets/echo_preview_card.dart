@@ -6,7 +6,7 @@ class EchoPreviewCard extends StatelessWidget {
   final EchoPreview echo;
   final bool isGuiding;
   final VoidCallback onClose;
-  final VoidCallback onOpen;
+  final Function(EchoPreview echo) onOpen;
   final Function(EchoPreview echo)? onGuide;
 
   const EchoPreviewCard({
@@ -148,7 +148,7 @@ class EchoPreviewCard extends StatelessWidget {
                           child: SizedBox(
                             height: 30,
                             child: ElevatedButton(
-                              onPressed: onOpen,
+                              onPressed: () => onOpen(echo),
                               style: ElevatedButton.styleFrom(
                                 elevation: 0,
                                 backgroundColor: const Color(0xFF111827),

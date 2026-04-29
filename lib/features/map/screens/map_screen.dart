@@ -14,6 +14,7 @@ import '../providers/map_provider.dart';
 import '../widgets/create_echo_fab.dart';
 import '../widgets/echo_preview_card.dart';
 import '../widgets/location_status_banner.dart';
+import '../widgets/near_by_echo_pager.dart';
 import '../widgets/near_by_guidance_card.dart';
 import '../widgets/top_panel_floating.dart';
 
@@ -107,8 +108,8 @@ class _MapHomeScreenState extends ConsumerState<MapHomeScreen> {
           ),
 
           Positioned(
-            left: 30,
-            right: 40,
+            left: 5,
+            right: 5,
             bottom: mediaQuery.padding.bottom + 110,
             child: _MapBottomPanel(
               state: state,
@@ -209,8 +210,8 @@ class _MapBottomPanel extends StatelessWidget {
         onClose: controller.clearSelectedEcho,
         isGuiding: state.isGuiding,
         onGuide: controller.showGuideLine,
-        onOpen: () {
-          final check = controller.checkCondition();
+        onOpen: (echo) {
+          final check = controller.checkCondition(echo);
 
           if (check) {
             context.push(
@@ -225,32 +226,53 @@ class _MapBottomPanel extends StatelessWidget {
     } else {
       final listNearEchoes = state.nearbyEchoes;
 
-      if (listNearEchoes.isNotEmpty) {
-        final echo = state.nearestEcho!;
+      if(listNearEchoes.isNotEmpty){
+        if(state.showNearbyPager){
+          child = NearbyEchoPager(
+            echoes: listNearEchoes,
+            isGuiding: state.isGuiding,
+            onGuide: controller.showGuideLine,
+            onOpen: (echo) {
+              final check = controller.checkCondition(echo);
 
-        final remaining =
-            (echo.distance - MapHomeController.echoUnlockRadiusInMeters).clamp(
-              0,
-              double.infinity,
-            );
-        return NearbyGuidanceCard(
-          key: ValueKey('nearby_${echo.id}'),
-          nearbyCount: state.nearbyEchoes.length,
-          title: echo.title,
-          distanceText: '${echo.distance.round()}m',
-          hintText: echo.distance <= MapHomeController.echoUnlockRadiusInMeters
-              ? 'Bạn đã ở trong vùng mở Echo'
-              : 'Đi thêm ${remaining.round()}m để mở Echo',
-          onOpenList: () {},
-          onGoTo: () => controller.guideToEcho(echo),
-          onClose: onClose,
-        );
-      } else {
+              debugPrint(
+                'Attempting to open echo id: ${echo.id}, check result: $check',
+              );
+
+              if (check) {
+                context.push(
+                  AppInforRouter.echoDetailPath,
+                  extra: echo,
+                );
+              }
+            },
+            onClose: controller.closeNearbyPager,
+          );
+        }else{
+          final echo = state.nearestEcho!;
+          final remaining =
+          (echo.distance - MapHomeController.echoUnlockRadiusInMeters)
+              .clamp(0, double.infinity);
+
+          child = NearbyGuidanceCard(
+            key: ValueKey('nearby_${echo.id}'),
+            nearbyCount: state.nearbyEchoes.length,
+            title: echo.title,
+            distanceText: '${echo.distance.round()}m',
+            hintText: echo.distance <= MapHomeController.echoUnlockRadiusInMeters
+                ? 'Bạn đã ở trong vùng mở Echo'
+                : 'Đi thêm ${remaining.round()}m để mở Echo',
+            onOpenList: controller.openNearbyPager,
+            onGoTo: controller.openNearbyPager,
+            onClose: onClose,
+          );
+        }
+      }else{
         child = EmptyDiscoveryCard(
-          key: const ValueKey('empty_discovery'),
           onExploreCampus: controller.focusToNLU,
         );
       }
+
     }
 
     return AnimatedSwitcher(

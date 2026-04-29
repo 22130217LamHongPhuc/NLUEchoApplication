@@ -410,6 +410,16 @@ class MapHomeController extends AutoDisposeNotifier<MapHomeState> {
       selectedEcho: echo,
       selectedEchoId: echoId.toString(),
       clearErrorMessage: true,
+      showNearbyPager: false
+    );
+  }
+
+  void openNearbyPager() {
+    state = state.copyWith(
+      clearSelectedEcho: true,
+      showNearbyPager: true,
+      showTips: true,
+      clearErrorMessage: true,
     );
   }
 
@@ -427,7 +437,7 @@ class MapHomeController extends AutoDisposeNotifier<MapHomeState> {
     state = state.copyWith(selectedFilter: value, clearErrorMessage: true);
   }
 
-  void guideToEcho(EchoPreview echo) {
+  void guideToEcho({EchoPreview? echo}) {
     final userLoc = state.userLocation;
     if (userLoc == null) {
       state = state.copyWith(
@@ -435,12 +445,15 @@ class MapHomeController extends AutoDisposeNotifier<MapHomeState> {
       );
       return;
     }
+    EchoPreview? currentEcho = echo;
 
-    final distance = distanceBetweenMarker(userLoc, echo.location);
+    currentEcho ??= state.nearestEcho;
+
+    final distance = distanceBetweenMarker(userLoc, currentEcho!.location);
 
     state = state.copyWith(
-      selectedEcho: echo,
-      selectedEchoId: echo.id.toString(),
+      selectedEcho: currentEcho,
+      selectedEchoId: currentEcho.id.toString(),
       guidingDistance: distance,
       clearErrorMessage: true,
     );
@@ -586,8 +599,7 @@ class MapHomeController extends AutoDisposeNotifier<MapHomeState> {
         });
   }
 
-  bool checkCondition() {
-    final echo = state.selectedEcho!;
+  bool checkCondition(EchoPreview echo) {
     if (echo.capsule) {
       final now = DateTime.now();
       if (echo.unlockTime != null && echo.unlockTime!.isAfter(now)) {
@@ -599,17 +611,23 @@ class MapHomeController extends AutoDisposeNotifier<MapHomeState> {
       }
     }
 
-    final distance = distanceFromUserToEcho(state.selectedEcho!);
+    final distance = distanceFromUserToEcho(echo);
 
     if (distance > echoUnlockRadiusInMeters) {
       final needMore = (distance - echoUnlockRadiusInMeters).ceil();
       state = state.copyWith(
         errorMessage: 'Bạn cần đến gần Echo thêm khoảng ${needMore}m để xem.',
-        selectedEchoId: null,
       );
       return false;
     }
 
     return true;
+  }
+
+  void closeNearbyPager() {
+    state = state.copyWith(
+      showNearbyPager: false,
+      clearErrorMessage: true,
+    );
   }
 }

@@ -28,6 +28,7 @@ class MapHomeState {
   final double? guidingDistance;
   final EchoPreview? guidingEcho;
   final bool? clearGuidingEcho;
+  final bool showNearbyPager;
   const MapHomeState({
     this.isLoadingLocation = false,
     this.userLocation,
@@ -45,6 +46,7 @@ class MapHomeState {
       this.showTips = true,
       this.guidingEcho,
       this.clearGuidingEcho,
+        this.showNearbyPager = false,
   });
 
   MapHomeState copyWith({
@@ -67,6 +69,7 @@ class MapHomeState {
     bool ? showTips,
     EchoPreview? guidingEcho,
     bool clearGuiding = false,
+    bool ? showNearbyPager,
   }) {
     return MapHomeState(
       isLoadingLocation: isLoadingLocation ?? this.isLoadingLocation,
@@ -84,6 +87,7 @@ class MapHomeState {
       guidingDistance: guidingDistance ?? this.guidingDistance,
       showTips: showTips ?? this.showTips,
       guidingEcho:  clearGuiding ? null : (guidingEcho ?? this.guidingEcho) ,
+      showNearbyPager: showNearbyPager ?? this.showNearbyPager,
     );
   }
 }
