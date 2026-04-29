@@ -4,14 +4,18 @@ import '../models/echo_preview.dart';
 
 class EchoPreviewCard extends StatelessWidget {
   final EchoPreview echo;
+  final bool isGuiding;
   final VoidCallback onClose;
   final VoidCallback onOpen;
+  final Function(EchoPreview echo)? onGuide;
 
   const EchoPreviewCard({
     super.key,
     required this.echo,
     required this.onClose,
     required this.onOpen,
+    this.onGuide,
+    this.isGuiding = false,
   });
 
   @override
@@ -50,7 +54,8 @@ class EchoPreviewCard extends StatelessWidget {
 
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // title + close
                     Row(
@@ -136,27 +141,60 @@ class EchoPreviewCard extends StatelessWidget {
 
                     const SizedBox(height: 12),
 
-                    SizedBox(
-                      height: 38,
-                      child: ElevatedButton(
-                        onPressed: onOpen,
-                        style: ElevatedButton.styleFrom(
-                          elevation: 0,
-                          backgroundColor: const Color(0xFF111827),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 30,
+                            child: ElevatedButton(
+                              onPressed: onOpen,
+                              style: ElevatedButton.styleFrom(
+                                elevation: 0,
+                                backgroundColor: const Color(0xFF111827),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                'Xem Echo',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                        child: Text(
-                          isCapsule ? 'Xem chi tiết' : 'Mở Echo',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
+                        const SizedBox(width: 12),
+                      Expanded(
+                          child: SizedBox(
+                            height: 30,
+
+                            child: OutlinedButton(
+                              onPressed: () => onGuide?.call(echo),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFF1FA463)),
+                                foregroundColor: const Color(0xFF1FA463),
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text(
+                                'Hướng dẫn',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
+                        )
+                      ],
+                    )
                   ],
                 ),
               ),

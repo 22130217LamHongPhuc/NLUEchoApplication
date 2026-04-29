@@ -3,6 +3,7 @@ import 'package:echo_nlu/core/constants/app_colors.dart';
 import 'package:echo_nlu/core/constants/app_radius.dart';
 import 'package:echo_nlu/core/constants/app_spacing.dart';
 import 'package:echo_nlu/core/router/app_infor_router.dart';
+import 'package:echo_nlu/core/utils/toast_message.dart';
 import 'package:echo_nlu/features/auth/controllers/auth_controller.dart';
 import 'package:echo_nlu/features/auth/widgets/header.dart';
 import 'package:echo_nlu/features/auth/widgets/input_text.dart';
@@ -54,15 +55,11 @@ class StateLoginScreen extends ConsumerState<LoginScreen>{
       if (previous?.status == next.status) return;
 
       if (next.status == AuthStatus.success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đăng nhập thành công!')),
-        );
-
+          showToast(context, message: 'Đăng nhập thành công!');
         context.go(AppInforRouter.loginPath);
       } else if (next.status == AuthStatus.failure) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đăng nhập thất bại!')),
-        );
+        showToast(context, message: next.generalError ?? 'Đăng nhập thất bại. Vui lòng thử lại.');
+
       }
     });
 

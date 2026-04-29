@@ -13,7 +13,7 @@ import '../../features/permission/screens/location_permission_screen.dart';
 import 'app_infor_router.dart';
 
 final appRouter = GoRouter(
-  initialLocation: AppInforRouter.echoDetailPath,
+  initialLocation: AppInforRouter.homePath,
   routes: [
     GoRoute(
       path: AppInforRouter.splashPath,
@@ -26,6 +26,7 @@ final appRouter = GoRouter(
       name: AppInforRouter.registerName,
       builder: (context, state) => RegisterScreen(),
     ),
+
     GoRoute(
       path: AppInforRouter.loginPath,
       name: AppInforRouter.loginName,
@@ -46,8 +47,6 @@ final appRouter = GoRouter(
       name: AppInforRouter.permissionsName,
       builder: (context, state) => LocationPermissionScreen(),
     ),
-
-
     GoRoute(
       path: AppInforRouter.createEchoPath,
       name: AppInforRouter.createEchoName,
@@ -71,6 +70,7 @@ final appRouter = GoRouter(
           );
         }
     )
+
 
 
 

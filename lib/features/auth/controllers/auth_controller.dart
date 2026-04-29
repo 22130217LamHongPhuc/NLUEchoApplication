@@ -1,3 +1,4 @@
+import 'package:echo_nlu/core/providers/core_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/exception/app_exception.dart';
@@ -185,23 +186,23 @@ class AuthController extends AutoDisposeNotifier<AuthState> {
     final fullNameError = AuthValidator.validateFullName(state.fullName);
     final emailError = AuthValidator.validateEmail(state.email);
     final passwordError = AuthValidator.validatePassword(state.password);
-    // final confirmPasswordError = AuthValidator.validateConfirmPassword(
-    //   state.password,
-    //   state.confirmPassword,
-    // );
+    final confirmPasswordError = AuthValidator.validateConfirmPassword(
+      state.password,
+      state.confirmPassword,
+    );
 
     state = state.copyWith(
       fullNameError: fullNameError,
       emailError: emailError,
       passwordError: passwordError,
-      confirmPasswordError: null,
+      confirmPasswordError: confirmPasswordError,
       status: AuthStatus.initial,
     );
 
     return fullNameError == null &&
         emailError == null &&
         passwordError == null ;
-        // confirmPasswordError == null;
+        confirmPasswordError == null;
   }
 
   Future<void> submitLogin() async {
@@ -219,6 +220,9 @@ class AuthController extends AutoDisposeNotifier<AuthState> {
     );
 
    if(response.success) {
+     ref.read(localStorageProvider).saveToken(response.data!.token);
+     ref.read(localStorageProvider).saveToken(response.data!.refreshToken);
+
      state = state.copyWith(
        status: AuthStatus.authenticated,
      );
@@ -263,29 +267,6 @@ class AuthController extends AutoDisposeNotifier<AuthState> {
     await _repository.logout();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
-
-  void _handleLoginError(AppException e) {
-    switch (e.code) {
-      case 'INVALID_CREDENTIALS':
-        state = state.copyWith(
-          status: AuthStatus.failure,
-          generalError: 'Email hoặc mật khẩu không đúng',
-        );
-        break;
-      case 'EMAIL_NOT_VERIFIED':
-        state = state.copyWith(
-          status: AuthStatus.failure,
-          generalError: 'Tài khoản chưa xác thực email',
-        );
-        break;
-      default:
-        state = state.copyWith(
-          status: AuthStatus.failure,
-          generalError: e.message,
-        );
-    }
-  }
-
 
   void resetStatus() {
     state = state.copyWith(status: AuthStatus.initial);

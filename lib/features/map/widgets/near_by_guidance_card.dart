@@ -10,6 +10,7 @@ class NearbyGuidanceCard extends StatelessWidget {
   final String hintText;
   final VoidCallback onGoTo;
   final VoidCallback onOpenList;
+  final VoidCallback onClose;
 
   const NearbyGuidanceCard({
     super.key,
@@ -19,6 +20,7 @@ class NearbyGuidanceCard extends StatelessWidget {
     required this.hintText,
     required this.onGoTo,
     required this.onOpenList,
+    required this.onClose,
   });
 
   @override
@@ -27,13 +29,19 @@ class NearbyGuidanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Có $nearbyCount Echo gần bạn',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Có $nearbyCount Echo gần bạn',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              IconButton(onPressed: onClose, icon: Icon(Icons.close,color:Colors.white)),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
@@ -74,13 +82,6 @@ class NearbyGuidanceCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Expanded(
-                child: SecondaryGlassButton(
-                  label: 'Xem gần đây',
-                  icon: Icons.route_rounded,
-                  onTap: onOpenList,
-                ),
-              ),
             ],
           ),
         ],
@@ -92,10 +93,7 @@ class NearbyGuidanceCard extends StatelessWidget {
 class EmptyDiscoveryCard extends StatelessWidget {
   final VoidCallback onExploreCampus;
 
-  const EmptyDiscoveryCard({
-    super.key,
-    required this.onExploreCampus,
-  });
+  const EmptyDiscoveryCard({super.key, required this.onExploreCampus});
 
   @override
   Widget build(BuildContext context) {

@@ -21,11 +21,13 @@ class MapHomeState {
   final bool hasLocationPermission;
   final String? errorMessage;
   final List<EchoPreview> echoPreviews;
-
   final List<EchoPreview> nearbyEchoes;
   final EchoPreview? nearestEcho;
+  final bool showTips;
   final bool isGuiding;
   final double? guidingDistance;
+  final EchoPreview? guidingEcho;
+  final bool? clearGuidingEcho;
   const MapHomeState({
     this.isLoadingLocation = false,
     this.userLocation,
@@ -40,6 +42,9 @@ class MapHomeState {
     this.nearestEcho,
     this.isGuiding = false,
     this.guidingDistance,
+      this.showTips = true,
+      this.guidingEcho,
+      this.clearGuidingEcho,
   });
 
   MapHomeState copyWith({
@@ -59,6 +64,9 @@ class MapHomeState {
     EchoPreview? nearestEcho,
     bool? isGuiding,
     double? guidingDistance,
+    bool ? showTips,
+    EchoPreview? guidingEcho,
+    bool clearGuiding = false,
   }) {
     return MapHomeState(
       isLoadingLocation: isLoadingLocation ?? this.isLoadingLocation,
@@ -72,8 +80,10 @@ class MapHomeState {
       selectedEcho: clearSelectedEcho ? null : (selectedEcho ?? this.selectedEcho),
       nearbyEchoes: nearbyEchoes ?? this.nearbyEchoes,
       nearestEcho: nearestEcho ?? this.nearestEcho,
-      isGuiding: isGuiding ?? this.isGuiding,
+      isGuiding: clearGuiding ? false : (isGuiding ?? this.isGuiding),
       guidingDistance: guidingDistance ?? this.guidingDistance,
+      showTips: showTips ?? this.showTips,
+      guidingEcho:  clearGuiding ? null : (guidingEcho ?? this.guidingEcho) ,
     );
   }
 }

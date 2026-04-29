@@ -27,18 +27,19 @@ class _FlashScreenState extends ConsumerState<FlashScreen> {
 
   @override
   void initState() {
-    super.initState();
 
+    super.initState();
     ref.listenManual<AsyncValue<LocationStatus>>(
       locationPermissionProvider,
           (previous, next) {
         next.whenOrNull(
           data: (status) {
             final store = ref.read(localStorageProvider);
+            store.reset();
             if (status != LocationStatus.granted) {
               _go(AppInforRouter.permissionsPath);
             } else if (store.isFirstLaunch) {
-              _go(AppInforRouter.homePath);
+              _go(AppInforRouter.onboardingPath);
             } else if (store.token.isEmpty) {
               _go(AppInforRouter.loginPath);
             } else {

@@ -9,15 +9,13 @@ import 'package:echo_nlu/features/echo_detail/models/user.dart';
 import 'package:echo_nlu/features/echo_detail/providers/echo_detail_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:just_waveform/just_waveform.dart';
+
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_size.dart';
-import '../../echo/providers/create_echo_provider.dart';
 import '../../echo/widgets/location_text.dart';
 import '../components/bottom_sheet_comment.dart';
 import '../components/bottom_sheet_image.dart';
-import '../models/comment.dart';
 
 class EchoDetailScreen extends ConsumerStatefulWidget {
   final int echoId;

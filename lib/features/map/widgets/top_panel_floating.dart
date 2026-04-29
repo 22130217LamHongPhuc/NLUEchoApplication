@@ -48,7 +48,7 @@ class TopFloatingPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.01),
+        color: Colors.grey.withOpacity(0.5),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
         boxShadow: [

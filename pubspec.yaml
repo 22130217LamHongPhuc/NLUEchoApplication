@@ -52,7 +52,7 @@ dependencies:
   just_audio:
   path_provider:
   provider:
-  just_waveform:
+  smooth_page_indicator: ^1.0.0
 
 
 

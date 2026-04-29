@@ -1,3 +1,4 @@
+import 'package:echo_nlu/core/providers/core_providers.dart';
 import 'package:echo_nlu/features/onboarding/widgets/onboard_button.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +29,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _goToPage(int page) async {
+    if(page == ref.read(onboardingProvider).currentPage) {
+      ref.read(localStorageProvider).setFirstLaunchDone();
+      context.goNamed(AppInforRouter.homePath);
+      return;
+    }
     await _pageController.animateToPage(
       page,
       duration: const Duration(milliseconds: 300),

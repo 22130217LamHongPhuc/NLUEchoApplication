@@ -5,6 +5,7 @@ import 'package:echo_nlu/features/map/controllers/map_home_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:trackasia_gl/trackasia_gl.dart';
 
 import '../../echo/screens/choose_create_echo.dart';
@@ -16,9 +17,6 @@ import '../widgets/location_status_banner.dart';
 import '../widgets/near_by_guidance_card.dart';
 import '../widgets/top_panel_floating.dart';
 
-
-
-
 class MapHomeScreen extends ConsumerStatefulWidget {
   const MapHomeScreen({super.key});
 
@@ -27,25 +25,29 @@ class MapHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _MapHomeScreenState extends ConsumerState<MapHomeScreen> {
+  late final ProviderSubscription<MapHomeState> listen;
+
   @override
   void initState() {
     super.initState();
 
-    Stream<int>.periodic(
-      const Duration(seconds: 5),
-          (count) => count,
-    );
-
-    ref.listenManual(mapHomeProvider, (previous, next) {
+    listen = ref.listenManual(mapHomeProvider, (previous, next) {
       if (next.errorMessage != null) {
         showToast(
           context,
           message: next.errorMessage!,
-          backgroundColor: Colors.amberAccent,
+          backgroundColor: Colors.deepOrangeAccent,
           icon: Icons.warning_amber_outlined,
         );
       }
     });
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    listen.close();
+    super.dispose();
   }
 
   @override
@@ -54,26 +56,28 @@ class _MapHomeScreenState extends ConsumerState<MapHomeScreen> {
     final controller = ref.read(mapHomeProvider.notifier);
     final mediaQuery = MediaQuery.of(context);
 
+    debugPrint(
+      'MapHomeScreen rebuild: selectedEcho=${state.selectedEcho?.id}, nearestEcho=${state.nearestEcho?.id}, nearbyCount=${state.nearbyEchoes.length}, showTips=${state.showTips}',
+    );
+
     return Scaffold(
       extendBody: true,
-      backgroundColor: const Color(0xFF09111F),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           TrackAsiaMap(
             styleString:
-            'https://maps.track-asia.com/styles/v1/simple.json?key=dba0fc3359f300e4d5917746880615a4ae',
+                'https://maps.track-asia.com/styles/v1/simple.json?key=dba0fc3359f300e4d5917746880615a4ae',
             initialCameraPosition: const CameraPosition(
               target: MapHomeController.nluCenter,
               zoom: 18.6,
             ),
             // minMaxZoomPreference: const MinMaxZoomPreference(14, 20),
-            myLocationEnabled: state.accessState == NluAccessState.insideNLU ||
-                state.accessState == NluAccessState.outsideNLU,
+            myLocationEnabled: true,
             onMapCreated: controller.onMapCreated,
           ),
 
           // const _MapPremiumOverlay(),
-
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -93,20 +97,23 @@ class _MapHomeScreenState extends ConsumerState<MapHomeScreen> {
 
           Positioned(
             right: 16,
-            bottom: mediaQuery.padding.bottom + 240,
+            bottom: MediaQuery.of(context).size.height / 2,
             child: _MapQuickActions(
               onFocusCampus: controller.focusToNLU,
               onFocusUser: controller.focusToUser,
+              showIconTips: !state.showTips,
+              onShowTips: controller.onShowTips,
             ),
           ),
 
           Positioned(
-            left: 16,
-            right: 16,
-            bottom: mediaQuery.padding.bottom + 96,
+            left: 30,
+            right: 40,
+            bottom: mediaQuery.padding.bottom + 110,
             child: _MapBottomPanel(
               state: state,
               controller: controller,
+              onClose: () => controller.onCloseTips(),
             ),
           ),
         ],
@@ -116,9 +123,11 @@ class _MapHomeScreenState extends ConsumerState<MapHomeScreen> {
         enabled: controller.canCreateEcho(),
         onTap: () {
           if (!controller.canCreateEcho()) {
-            showToast(context, message: 'Bạn cần ở trong khuôn viên NLU để tạo Echo mới',
-                backgroundColor: Colors.amberAccent,
-               );
+            showToast(
+              context,
+              message: 'Bạn cần ở trong khuôn viên NLU để tạo Echo mới',
+              backgroundColor: Colors.amberAccent,
+            );
             return;
           }
 
@@ -136,12 +145,16 @@ class _MapHomeScreenState extends ConsumerState<MapHomeScreen> {
 }
 
 class _MapQuickActions extends StatelessWidget {
+  final bool showIconTips;
   final VoidCallback onFocusCampus;
   final VoidCallback onFocusUser;
+  final VoidCallback onShowTips;
 
   const _MapQuickActions({
     required this.onFocusCampus,
     required this.onFocusUser,
+    required this.showIconTips,
+    required this.onShowTips,
   });
 
   @override
@@ -157,6 +170,14 @@ class _MapQuickActions extends StatelessWidget {
           icon: Icons.my_location_rounded,
           onTap: onFocusUser,
         ),
+        const SizedBox(height: 12),
+
+        showIconTips
+            ? _RoundGlassActionButton(
+                icon: Icons.tips_and_updates_outlined,
+                onTap: onShowTips,
+              )
+            : SizedBox.shrink(),
       ],
     );
   }
@@ -165,10 +186,13 @@ class _MapQuickActions extends StatelessWidget {
 class _MapBottomPanel extends StatelessWidget {
   final MapHomeState state;
   final MapHomeController controller;
+  final VoidCallback onClose;
+  final PageController _pageController = PageController(viewportFraction: 0.92);
 
-  const _MapBottomPanel({
+  _MapBottomPanel({
     required this.state,
     required this.controller,
+    required this.onClose,
   });
 
   @override
@@ -176,39 +200,57 @@ class _MapBottomPanel extends StatelessWidget {
     Widget child;
 
     if (state.selectedEcho != null) {
+      debugPrint(
+        'Showing EchoPreviewCard for echo id: ${state.selectedEcho!.id}',
+      );
       child = EchoPreviewCard(
         key: ValueKey('selected_${state.selectedEcho!.id}'),
         echo: state.selectedEcho!,
         onClose: controller.clearSelectedEcho,
+        isGuiding: state.isGuiding,
+        onGuide: controller.showGuideLine,
         onOpen: () {
-          context.push(
-            AppInforRouter.echoDetailPath,
-            extra: state.selectedEcho!,
-          );
+          final check = controller.checkCondition();
+
+          if (check) {
+            context.push(
+              AppInforRouter.echoDetailPath,
+              extra: state.selectedEcho!,
+            );
+          }
         },
       );
-    } else if (state.nearestEcho != null) {
-      final echo = state.nearestEcho!;
-      final remaining =
-      (echo.distance - MapHomeController.echoUnlockRadiusInMeters).clamp(0, double.infinity);
-
-      child = NearbyGuidanceCard(
-        key: ValueKey('nearby_${echo.id}'),
-        nearbyCount: state.nearbyEchoes.length,
-        title: echo.title ?? 'Echo nearby',
-        distanceText: '${echo.distance.round()}m',
-        hintText: echo.distance <=
-                MapHomeController.echoUnlockRadiusInMeters
-            ? 'Bạn đã ở trong vùng mở Echo'
-            : 'Đi thêm ${remaining.round()}m để mở Echo',
-        onGoTo: () => controller.guideToEcho(echo),
-        onOpenList: (){},
-      );
+    } else if (!state.showTips) {
+      child = SizedBox.shrink();
     } else {
-      child = EmptyDiscoveryCard(
-        key: const ValueKey('empty_discovery'),
-        onExploreCampus: controller.focusToNLU,
-      );
+      final listNearEchoes = state.nearbyEchoes;
+
+      if (listNearEchoes.isNotEmpty) {
+        final echo = state.nearestEcho!;
+
+        final remaining =
+            (echo.distance - MapHomeController.echoUnlockRadiusInMeters).clamp(
+              0,
+              double.infinity,
+            );
+        return NearbyGuidanceCard(
+          key: ValueKey('nearby_${echo.id}'),
+          nearbyCount: state.nearbyEchoes.length,
+          title: echo.title,
+          distanceText: '${echo.distance.round()}m',
+          hintText: echo.distance <= MapHomeController.echoUnlockRadiusInMeters
+              ? 'Bạn đã ở trong vùng mở Echo'
+              : 'Đi thêm ${remaining.round()}m để mở Echo',
+          onOpenList: () {},
+          onGoTo: () => controller.guideToEcho(echo),
+          onClose: onClose,
+        );
+      } else {
+        child = EmptyDiscoveryCard(
+          key: const ValueKey('empty_discovery'),
+          onExploreCampus: controller.focusToNLU,
+        );
+      }
     }
 
     return AnimatedSwitcher(
@@ -226,11 +268,6 @@ class _MapBottomPanel extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
 
 class _MapPremiumOverlay extends StatelessWidget {
   const _MapPremiumOverlay();
@@ -302,10 +339,7 @@ class _TopGlassBar extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.waves_rounded,
-                  color: Colors.white,
-                ),
+                child: const Icon(Icons.waves_rounded, color: Colors.white),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -323,10 +357,7 @@ class _TopGlassBar extends StatelessWidget {
                     SizedBox(height: 2),
                     Text(
                       'Lưu giữ ký ức tại nơi bạn đứng',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12.5,
-                      ),
+                      style: TextStyle(color: Colors.white70, fontSize: 12.5),
                     ),
                   ],
                 ),
@@ -346,10 +377,7 @@ class _TopGlassBar extends StatelessWidget {
                     color: Colors.white.withOpacity(0.10),
                     border: Border.all(color: Colors.white.withOpacity(0.16)),
                   ),
-                  child: const Icon(
-                    Icons.person_rounded,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(Icons.person_rounded, color: Colors.white),
                 ),
               ),
             ],
@@ -359,14 +387,12 @@ class _TopGlassBar extends StatelessWidget {
     );
   }
 }
+
 class _MiniGlassButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _MiniGlassButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _MiniGlassButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -387,15 +413,11 @@ class _MiniGlassButton extends StatelessWidget {
   }
 }
 
-
 class _FilterChipsRow extends StatelessWidget {
   final List<String> filters;
   final int selectedIndex;
 
-  const _FilterChipsRow({
-    required this.filters,
-    required this.selectedIndex,
-  });
+  const _FilterChipsRow({required this.filters, required this.selectedIndex});
 
   @override
   Widget build(BuildContext context) {
@@ -423,20 +445,19 @@ class _FilterChipsRow extends StatelessWidget {
                 ),
                 boxShadow: isSelected
                     ? [
-                  BoxShadow(
-                    color: const Color(0xFF66F5AF).withOpacity(0.20),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ]
+                        BoxShadow(
+                          color: const Color(0xFF66F5AF).withOpacity(0.20),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ]
                     : [],
               ),
               child: Text(
                 filters[index],
                 style: TextStyle(
                   color: Colors.white,
-                  fontWeight:
-                  isSelected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ),
@@ -447,16 +468,11 @@ class _FilterChipsRow extends StatelessWidget {
   }
 }
 
-
-
 class _RoundGlassActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _RoundGlassActionButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _RoundGlassActionButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -491,6 +507,7 @@ class _RoundGlassActionButton extends StatelessWidget {
     );
   }
 }
+
 class _BottomNavBar extends StatelessWidget {
   const _BottomNavBar();
 
@@ -501,9 +518,7 @@ class _BottomNavBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade200),
-        ),
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -515,24 +530,11 @@ class _BottomNavBar extends StatelessWidget {
       child: const Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _NavItem(
-            icon: Icons.map_rounded,
-            label: 'Map',
-            active: true,
-          ),
-          _NavItem(
-            icon: Icons.grid_view_rounded,
-            label: 'Wall',
-          ),
+          _NavItem(icon: Icons.map_rounded, label: 'Map', active: true),
+          _NavItem(icon: Icons.grid_view_rounded, label: 'Wall'),
           SizedBox(width: 60),
-          _NavItem(
-            icon: Icons.favorite_rounded,
-            label: 'Saved',
-          ),
-          _NavItem(
-            icon: Icons.person_rounded,
-            label: 'Profile',
-          ),
+          _NavItem(icon: Icons.favorite_rounded, label: 'Saved'),
+          _NavItem(icon: Icons.person_rounded, label: 'Profile'),
         ],
       ),
     );
@@ -572,26 +574,17 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-
 class EchoMarker extends StatefulWidget {
   final Color color;
   final IconData icon;
 
-  const EchoMarker({
-    super.key,
-    required this.color,
-    required this.icon,
-  });
+  const EchoMarker({super.key, required this.color, required this.icon});
 
   @override
   State<EchoMarker> createState() => _EchoMarkerState();
 }
 
-class _EchoMarkerState extends State<EchoMarker>
-     {
-
-
-
+class _EchoMarkerState extends State<EchoMarker> {
   @override
   Widget build(BuildContext context) {
     final baseSize = 40.0;
@@ -599,39 +592,35 @@ class _EchoMarkerState extends State<EchoMarker>
     return SizedBox(
       width: 120,
       height: 120,
-      child:  Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: baseSize + 42 * 0.6,
-          height: baseSize + 42 * 0.6,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: widget.color.withOpacity(0.22 * 1),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: baseSize + 42 * 0.6,
+            height: baseSize + 42 * 0.6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: widget.color.withOpacity(0.22 * 1),
+            ),
           ),
-        ),
-        Container(
-          width: baseSize,
-          height: baseSize,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: widget.color,
-            boxShadow: [
-              BoxShadow(
-                color: widget.color.withOpacity(0.66),
-                blurRadius: 18,
-                spreadRadius: 4,
-              ),
-            ],
+          Container(
+            width: baseSize,
+            height: baseSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: widget.color,
+              boxShadow: [
+                BoxShadow(
+                  color: widget.color.withOpacity(0.66),
+                  blurRadius: 18,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: Icon(widget.icon, size: 13, color: Colors.white),
           ),
-          child: Icon(
-            widget.icon,
-            size: 13,
-            color: Colors.white,
-          ),
-        ),
-      ],
-    )
+        ],
+      ),
     );
   }
 }
@@ -663,8 +652,6 @@ class _PulseEchoMarkerState extends State<PulseEchoMarker>
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     )..repeat();
-
-
   }
 
   @override
@@ -711,11 +698,7 @@ class _PulseEchoMarkerState extends State<PulseEchoMarker>
                     ),
                   ],
                 ),
-                child: Icon(
-                  widget.icon,
-                  size: 26,
-                  color: Colors.white,
-                ),
+                child: Icon(widget.icon, size: 26, color: Colors.white),
               ),
             ],
           );
@@ -773,5 +756,3 @@ _MarkerVisual _markerVisualById(String id) {
       );
   }
 }
-
-

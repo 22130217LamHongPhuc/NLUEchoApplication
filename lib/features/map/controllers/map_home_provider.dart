@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui';
 
@@ -11,8 +12,6 @@ import 'package:trackasia_gl/trackasia_gl.dart';
 import '../models/echo_preview.dart';
 import 'map_home_state.dart';
 
-
-
 class MapHomeController extends Notifier<MapHomeState> {
   TrackAsiaMapController? _mapController;
 
@@ -23,6 +22,7 @@ class MapHomeController extends Notifier<MapHomeState> {
   static const double distanceToShowNearbyEchoesInMeters = 150;
 
   static const double echoUnlockRadiusInMeters = 60;
+  StreamSubscription<Position>? _positionSub;
 
   final List<MapFilterItem> filters = [
     MapFilterItem(id: 0, label: 'Tất cả'),
@@ -31,23 +31,19 @@ class MapHomeController extends Notifier<MapHomeState> {
     MapFilterItem(id: 3, label: 'Đang hot'),
   ];
 
-  final List<EchoPreview> _allEchoes =  [];
+  final List<EchoPreview> _allEchoes = [];
   final Set<String> _addedImageKeys = {};
   final Map<String, String> _echoToSymbol = {};
   late final EchoRepository echoRepository;
-
-
-
 
   @override
   MapHomeState build() {
     echoRepository = ref.read(echoRepositoryProvider);
     Future.microtask(init);
     return const MapHomeState(isLoadingLocation: true);
+
+    listenUserLocation();
   }
-
-
-
 
   Future<void> init() async {
     await _determineUserLocation();
@@ -55,19 +51,11 @@ class MapHomeController extends Notifier<MapHomeState> {
     await renderEchoList();
   }
 
-
-
   void onMapCreated(TrackAsiaMapController controller) async {
     debugPrint("Map created, controller: $controller");
     _mapController = controller;
     controller.onSymbolTapped.add(_onSymbolTapped);
   }
-
-
-
-
-
-
 
   Future<void> focusToNLU() async {
     await _mapController?.animateCamera(
@@ -76,14 +64,10 @@ class MapHomeController extends Notifier<MapHomeState> {
   }
 
   Future<void> focusToUser() async {
-
     final user = state.userLocation;
     if (user == null) return;
 
-    await _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(user, 16.8),
-    );
-
+    await _mapController?.animateCamera(CameraUpdate.newLatLngZoom(user, 20.0));
   }
 
   Future<void> _determineUserLocation() async {
@@ -156,11 +140,12 @@ class MapHomeController extends Notifier<MapHomeState> {
   }
 
   bool get isInsideNLU => state.accessState == NluAccessState.insideNLU;
+
   bool get isNearNLU => state.accessState == NluAccessState.nearNLU;
+
   bool get isOutsideNLU => state.accessState == NluAccessState.outsideNLU;
 
   bool canCreateEcho() => isInsideNLU;
-
 
   String openButtonText() {
     if (state.isLoadingLocation) return 'Đang xác định vị trí...';
@@ -198,7 +183,7 @@ class MapHomeController extends Notifier<MapHomeState> {
       latitude: state.userLocation!.latitude,
     );
 
-    if(!response.success || response.data == null) {
+    if (!response.success || response.data == null) {
       debugPrint("Failed to fetch echoes: ${response.message}");
       state = state.copyWith(errorMessage: response.message);
       return;
@@ -206,8 +191,15 @@ class MapHomeController extends Notifier<MapHomeState> {
 
     state = state.copyWith(
       echoPreviews: response.data!,
-      nearbyEchoes: response.data!.where((echo) => distanceFromUserToEcho(echo) <= distanceToShowNearbyEchoesInMeters).toList(),
-      nearestEcho: response.data![0]
+      nearbyEchoes: response.data!
+          .where(
+            (echo) =>
+                distanceFromUserToEcho(echo) <=
+                distanceToShowNearbyEchoesInMeters,
+          )
+          .toList(),
+      nearestEcho: response.data![0],
+      clearErrorMessage: true,
     );
 
     for (final echo in state.echoPreviews) {
@@ -240,11 +232,7 @@ class MapHomeController extends Notifier<MapHomeState> {
       key = 'marker-ghost';
     }
 
-    return (
-    color: baseColor,
-    icon: baseIcon,
-    key: key,
-    );
+    return (color: baseColor, icon: baseIcon, key: key);
   }
 
   Future<Uint8List> _createMarkerImage({
@@ -255,7 +243,6 @@ class MapHomeController extends Notifier<MapHomeState> {
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, size, size));
     final center = Offset(size / 2, size / 2);
-
 
     final innerRadius = size * 0.167;
     final outerRadius = innerRadius * 1.63;
@@ -275,11 +262,7 @@ class MapHomeController extends Notifier<MapHomeState> {
     );
 
     // Inner circle solid
-    canvas.drawCircle(
-      center,
-      innerRadius,
-      Paint()..color = color,
-    );
+    canvas.drawCircle(center, innerRadius, Paint()..color = color);
 
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
     textPainter.text = TextSpan(
@@ -307,27 +290,26 @@ class MapHomeController extends Notifier<MapHomeState> {
   }
 
   Future<void> addEchoMarker(
-      TrackAsiaMapController controller,
-      String echoId,
-      LatLng position, {
-        Color color = Colors.blueAccent,
-        IconData icon = Icons.school,
-        String markerKey = 'echo-marker-default',
-      }) async {
+    TrackAsiaMapController controller,
+    String echoId,
+    LatLng position, {
+    Color color = Colors.blueAccent,
+    IconData icon = Icons.school,
+    String markerKey = 'echo-marker-default',
+  }) async {
     try {
-
       if (!_addedImageKeys.contains(markerKey)) {
         final bytes = await _createMarkerImage(color: color, icon: icon);
         await controller.addImage(markerKey, bytes);
         _addedImageKeys.add(markerKey);
       }
 
-     final symbol =  await controller.addSymbol(
+      final symbol = await controller.addSymbol(
         SymbolOptions(
           geometry: position,
           iconImage: markerKey,
           iconSize: 1.2,
-          iconAnchor: 'center'
+          iconAnchor: 'center',
         ),
       );
 
@@ -337,8 +319,6 @@ class MapHomeController extends Notifier<MapHomeState> {
     }
   }
 
-
-
   void _onSymbolTapped(Symbol argument) {
     final echoId = _echoToSymbol[argument.id];
     if (echoId != null) {
@@ -346,7 +326,8 @@ class MapHomeController extends Notifier<MapHomeState> {
       selectEchoById(int.parse(echoId));
     } else {
       debugPrint(
-          "Tapped symbol with id ${argument.id} has no associated echoId");
+        "Tapped symbol with id ${argument.id} has no associated echoId",
+      );
     }
   }
 
@@ -357,9 +338,7 @@ class MapHomeController extends Notifier<MapHomeState> {
       b.latitude,
       b.longitude,
     );
-
   }
-
 
   void selectEchoById(int echoId) {
     debugPrint("Selecting echo with id: $echoId");
@@ -372,16 +351,13 @@ class MapHomeController extends Notifier<MapHomeState> {
 
     if (state.accessState == NluAccessState.nearNLU) {
       state = state.copyWith(
-        errorMessage: 'Bạn đang ở gần NLU. Hãy vào sâu hơn để tương tác với Echo.',
+        errorMessage:
+            'Bạn đang ở gần NLU. Hãy vào sâu hơn để tương tác với Echo.',
       );
       return;
     }
 
-
-
-  final echo = state.echoPreviews.firstWhere((e) => e.id == echoId);
-
-  
+    final echo = state.echoPreviews.firstWhere((e) => e.id == echoId);
 
     // if (echo.capsule) {
     //   final now = DateTime.now();
@@ -405,15 +381,15 @@ class MapHomeController extends Notifier<MapHomeState> {
 
     final distance = distanceBetweenMarker(userLoc, echo.location);
 
-    if (distance > echoUnlockRadiusInMeters) {
-      final needMore = (distance - echoUnlockRadiusInMeters).ceil();
-      state = state.copyWith(
-        errorMessage:
-        'Bạn cần đến gần Echo thêm khoảng ${needMore}m để xem.',
-        selectedEchoId: null,
-      );
-      return;
-    }
+    // if (distance > echoUnlockRadiusInMeters) {
+    //   final needMore = (distance - echoUnlockRadiusInMeters).ceil();
+    //   state = state.copyWith(
+    //     errorMessage:
+    //     'Bạn cần đến gần Echo thêm khoảng ${needMore}m để xem.',
+    //     selectedEchoId: null,
+    //   );
+    //   return;
+    // }
 
     state = state.copyWith(
       selectedEcho: echo,
@@ -425,46 +401,200 @@ class MapHomeController extends Notifier<MapHomeState> {
   void clearSelectedEcho() {
     debugPrint("Clearing selected echo");
     state = state.copyWith(
-    clearSelectedEcho: true,
+      clearSelectedEcho: true,
+      clearErrorMessage: true,
+
+      // clearGuiding: true,
     );
   }
 
-
   void selectFilter(int value) {
-    state = state.copyWith(selectedFilter: value);
+    state = state.copyWith(selectedFilter: value, clearErrorMessage: true);
   }
 
   void guideToEcho(EchoPreview echo) {
-      final userLoc = state.userLocation;
-      if (userLoc == null) {
-        state = state.copyWith(
-          errorMessage: 'Không thể xác định vị trí hiện tại của bạn.',
-        );
-        return;
-      }
+    final userLoc = state.userLocation;
+    if (userLoc == null) {
+      state = state.copyWith(
+        errorMessage: 'Không thể xác định vị trí hiện tại của bạn.',
+      );
+      return;
+    }
 
-      final distance = distanceBetweenMarker(userLoc, echo.location);
+    final distance = distanceBetweenMarker(userLoc, echo.location);
 
-      if (distance > echoUnlockRadiusInMeters) {
-        state = state.copyWith(
-          isGuiding: true,
-          guidingDistance: distance,
-        );
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLngZoom(echo.location, 16.5),
-        );
-      } else {
-        state = state.copyWith(
-          selectedEcho: echo,
-          selectedEchoId: echo.id.toString(),
-          clearErrorMessage: true,
-        );
-      }
+    state = state.copyWith(
+      selectedEcho: echo,
+      selectedEchoId: echo.id.toString(),
+      guidingDistance: distance,
+      clearErrorMessage: true,
+    );
   }
 
   void openNearbyEchoesSheet() {
-      state = state.copyWith(
-        nearbyEchoes: state.echoPreviews.where((echo) => distanceFromUserToEcho(echo) <= nluNearRadiusInMeters).toList(),
+    state = state.copyWith(
+      nearbyEchoes: state.echoPreviews
+          .where(
+            (echo) => distanceFromUserToEcho(echo) <= nluNearRadiusInMeters,
+          )
+          .toList(),
+      clearErrorMessage: true,
+    );
+  }
+
+  onCloseTips() {
+    state = state.copyWith(showTips: false);
+  }
+
+  void onShowTips() {
+    debugPrint("Showing tips");
+    state = state.copyWith(showTips: true);
+  }
+
+  Future<void> showGuideLine(EchoPreview echo) async {
+    final user = state.userLocation!;
+    if (_mapController == null) return;
+
+    final data = buildGuideLineGeoJson(
+      userLat: user.latitude,
+      userLng: user.longitude,
+      echoLat: echo.location.latitude,
+      echoLng: echo.location.longitude,
+    );
+
+    if (!state.isGuiding) {
+      await _mapController!.addSource(
+        'guide-line-source',
+        GeojsonSourceProperties(data: data),
       );
+
+      await _mapController!.addLineLayer(
+        'guide-line-source',
+        'guide-line-layer',
+        LineLayerProperties(
+          lineColor: '#34D399',
+          lineWidth: 4,
+          lineOpacity: 0.9,
+        ),
+      );
+    } else {
+      debugPrint("Updating guide line for echo ${echo.id}");
+      await _mapController!.setGeoJsonSource('guide-line-source', data);
+    }
+
+    focusToUser();
+
+    state = state.copyWith(
+      isGuiding: true,
+      guidingDistance: distanceFromUserToEcho(echo),
+      guidingEcho: echo,
+      clearErrorMessage: true,
+    );
+  }
+
+  Future<void> updateGuideLine() async {
+    final echo = state.selectedEcho;
+    final user = state.userLocation;
+
+    if (echo == null || user == null || _mapController == null) return;
+
+    final data = buildGuideLineGeoJson(
+      userLat: user.latitude,
+      userLng: user.longitude,
+      echoLat: echo.location.latitude,
+      echoLng: echo.location.longitude,
+    );
+
+    await _mapController!.setGeoJsonSource('guide-line-source', data);
+  }
+
+  Map<String, dynamic> buildGuideLineGeoJson({
+    required double userLat,
+    required double userLng,
+    required double echoLat,
+    required double echoLng,
+  }) {
+    return {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [userLng, userLat],
+              [echoLng, echoLat],
+            ],
+          },
+          "properties": {},
+        },
+      ],
+    };
+  }
+
+  void listenUserLocation() {
+    _positionSub?.cancel();
+
+    const settings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 5,
+    );
+
+    _positionSub = Geolocator.getPositionStream(locationSettings: settings)
+        .listen((pos) async {
+          if (pos.accuracy > 25) return;
+
+          final newLocation = LatLng(pos.latitude, pos.longitude);
+
+          final oldLocation = state.userLocation;
+
+          if (oldLocation != null) {
+            final moved = Geolocator.distanceBetween(
+              oldLocation.latitude,
+              oldLocation.longitude,
+              newLocation.latitude,
+              newLocation.longitude,
+            );
+
+            if (moved < 3) return;
+          }
+
+          state = state.copyWith(
+            userLocation: newLocation,
+            accessState: _computeNluAccessState(newLocation),
+            clearErrorMessage: true,
+          );
+
+          if (state.isGuiding && state.guidingEcho != null) {
+            await updateGuideLine();
+          }
+        });
+  }
+
+  bool checkCondition() {
+    final echo = state.selectedEcho!;
+    if (echo.capsule) {
+      final now = DateTime.now();
+      if (echo.unlockTime != null && echo.unlockTime!.isAfter(now)) {
+        state = state.copyWith(
+          errorMessage: 'Kén chưa đến thời gian nở.',
+          selectedEchoId: null,
+        );
+        return false;
+      }
+    }
+
+    final distance = distanceFromUserToEcho(state.selectedEcho!);
+
+    if (distance > echoUnlockRadiusInMeters) {
+      final needMore = (distance - echoUnlockRadiusInMeters).ceil();
+      state = state.copyWith(
+        errorMessage: 'Bạn cần đến gần Echo thêm khoảng ${needMore}m để xem.',
+        selectedEchoId: null,
+      );
+      return false;
+    }
+
+    return true;
   }
 }

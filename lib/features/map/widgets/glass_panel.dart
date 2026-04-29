@@ -47,19 +47,6 @@ class PrimaryGlowButton extends StatelessWidget {
         height: 48,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFF2B6CB0),
-              Color(0xFF2C5282),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF60A5FA).withOpacity(0.22),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

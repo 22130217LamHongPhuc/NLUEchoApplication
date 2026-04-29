@@ -5,17 +5,17 @@ import 'package:echo_nlu/services/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/core_providers.dart';
+
 class EchoDetailController extends AutoDisposeNotifier<EchoDetailState> {
 
   late final EchoRepository echoRepository;
-  late final AudioNoteService audioNoteService;
 
 
   @override
   EchoDetailState build() {
     echoRepository = ref.read(echoRepositoryProvider);
     ref.onDispose((){
-      audioNoteService.dispose();
       ref.invalidate(echoCommentsProvider);
     });
     return const EchoDetailState();
@@ -41,29 +41,7 @@ class EchoDetailController extends AutoDisposeNotifier<EchoDetailState> {
     }
   }
 
-  void pauseAudioPlayback() async {
-    await audioNoteService.pausePlayback();
-  }
 
-  void resumeAudioPlayback() async {
-    await audioNoteService.resumePlayback();
-  }
-
-  void playAudio() async {
-    try {
-      await audioNoteService.playAudioFromPath(
-          state.echoDetail!.media.first.mediaUrl);
-      debugPrint('Audio playback started');
-    } catch (e) {
-      debugPrint('Error playing audio: $e');
-      state = state.copyWith(status: EchoDetailStatus.failure,
-          errorMessage: "Không thể phát âm thanh. Vui lòng thử lại.");
-    }
-  }
-
-  void stopAudioPlayback() async {
-    await audioNoteService.stopPlayback();
-  }
 
   Future<void> likeEcho() async {
     final response = await echoRepository.likeEchoDetail(

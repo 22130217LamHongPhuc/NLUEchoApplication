@@ -33,7 +33,14 @@ class LocalStorageService {
     await prefs.remove('token');
   }
 
+  Future<void> reset() async{
+    await prefs.setBool('first_launch',true);
+    await prefs.remove('token');
+    await prefs.remove('refreshToken');
+  }
 
-
-
+  Future<void> resetAuth() async {
+    await prefs.remove('token');
+    await prefs.remove('refreshToken');
+  }
 }
