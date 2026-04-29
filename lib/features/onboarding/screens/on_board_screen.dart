@@ -29,11 +29,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _goToPage(int page) async {
-    if(page == ref.read(onboardingProvider).currentPage) {
-      ref.read(localStorageProvider).setFirstLaunchDone();
-      context.goNamed(AppInforRouter.homePath);
-      return;
-    }
     await _pageController.animateToPage(
       page,
       duration: const Duration(milliseconds: 300),
@@ -47,10 +42,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     await _goToPage(nextPage);
   }
 
-  _navigateLogin(){
-    context.goNamed(AppInforRouter.loginName);
+  _navigate() {
+    ref.read(localStorageProvider).setFirstLaunchDone();
+    debugPrint(
+      'Onboarding completed, navigating to home ${ref.read(localStorageProvider).isFirstLaunch}',
+    );
+    final store = ref.read(localStorageProvider);
+    if (store.token.isEmpty) {
+      context.goNamed(AppInforRouter.loginName);
+    } else {
+      context.goNamed(AppInforRouter.homeName);
+    }
   }
-
 
   @override
   void dispose() {
@@ -71,7 +74,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: onboardingState.isLastPage ? null : () => _handleNext(),
+                  onPressed: onboardingState.isLastPage
+                      ? null
+                      : () => _handleNext(),
                   child: Text(
                     'Bỏ qua',
                     style: TextStyle(
@@ -101,13 +106,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 itemCount: onboardingState.items.length,
               ),
 
-
               const SizedBox(height: AppSpacing.xl),
               OnboardingActionBar(
                 isLastPage: onboardingState.isLastPage,
-                onNextPressed: onboardingState.isLastPage ? _navigateLogin :_handleNext,
+                onNextPressed: onboardingState.isLastPage
+                    ? _navigate
+                    : _handleNext,
               ),
-
             ],
           ),
         ),

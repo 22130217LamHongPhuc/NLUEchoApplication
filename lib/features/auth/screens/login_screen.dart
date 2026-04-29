@@ -11,8 +11,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../../core/providers/core_providers.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/check_login.dart';
 
@@ -54,9 +52,8 @@ class StateLoginScreen extends ConsumerState<LoginScreen>{
     ref.listen<AuthState>(loginControllerProvider, (previous, next) {
       if (previous?.status == next.status) return;
 
-      if (next.status == AuthStatus.success) {
-          showToast(context, message: 'Đăng nhập thành công!');
-        context.go(AppInforRouter.loginPath);
+      if (next.status == AuthStatus.authenticated) {
+        context.go(AppInforRouter.homePath);
       } else if (next.status == AuthStatus.failure) {
         showToast(context, message: next.generalError ?? 'Đăng nhập thất bại. Vui lòng thử lại.');
 
@@ -65,6 +62,7 @@ class StateLoginScreen extends ConsumerState<LoginScreen>{
 
     final theme = Theme.of(context);
     return Scaffold(
+        resizeToAvoidBottomInset: true,
         backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.white,
@@ -95,28 +93,34 @@ class StateLoginScreen extends ConsumerState<LoginScreen>{
             ),
             child: authState.status == AuthStatus.submitting
                 ? const Center(child: CircularProgressIndicator())
-                :  Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 5),
-                child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Header(title: 'NLU Echo', subtitle: 'Khám phá ký ức quanh bạn', icon: Icons.energy_savings_leaf_outlined),
-                      SizedBox(height: AppSpacing.xl),
-                      _form(theme, authState,authController),
-                      SizedBox(height: AppSpacing.xxl,),
-                      ButtonCustom(titleButton: 'Đăng nhập', onNextPressed: () => authState.status != AuthStatus.submitting ? authController.submitLogin() : null),
-                      SizedBox(height: AppRadius.xl,),
-                      loginWithGoogle(),
-                      SizedBox(height: AppRadius.xl,),
-                      CheckAccount(
-                          title: 'Bạn chưa có tài khoản? ',
-                          subtitle: 'Đăng ký ngay',
-                          onPressed: () => context.push(AppInforRouter.registerPath)
-                      )
-                    ]
+                :  SizedBox(
+               height: MediaQuery.of(context).size.height,
+
+              child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 5),
+                  child: SingleChildScrollView(
+                    child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Header(title: 'NLU Echo', subtitle: 'Khám phá ký ức quanh bạn', icon: Icons.energy_savings_leaf_outlined),
+                          SizedBox(height: AppSpacing.xl),
+                          _form(theme, authState,authController),
+                          SizedBox(height: AppSpacing.xxl,),
+                          ButtonCustom(titleButton: 'Đăng nhập', onNextPressed: () => authState.status != AuthStatus.submitting ? authController.submitLogin() : null),
+                          SizedBox(height: AppRadius.xl,),
+                          loginWithGoogle(),
+                          SizedBox(height: AppRadius.xl,),
+                          CheckAccount(
+                              title: 'Bạn chưa có tài khoản? ',
+                              subtitle: 'Đăng ký ngay',
+                              onPressed: () => context.push(AppInforRouter.registerPath)
+                          )
+                        ]
+                    ),
+                  )
+                              ),
                 )
-            )
         )
     );
   }

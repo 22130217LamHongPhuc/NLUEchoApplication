@@ -19,7 +19,7 @@ abstract class AuthRepository {
     required String password,
   });
 
-  Future<void> logout();
+  Future<ApiResponse<String>> logout(String refreshToken);
 
   Future<bool> hasSession();
 }
@@ -43,9 +43,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> logout() {
-    // TODO: implement logout
-    throw UnimplementedError();
+  Future<ApiResponse<String>> logout(String refreshToken) async {
+    final response = await apiService.logout(refreshToken);
+    return response;
   }
 
   @override

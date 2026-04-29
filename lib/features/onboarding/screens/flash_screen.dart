@@ -31,11 +31,12 @@ class _FlashScreenState extends ConsumerState<FlashScreen> {
     super.initState();
     ref.listenManual<AsyncValue<LocationStatus>>(
       locationPermissionProvider,
-          (previous, next) {
+        (previous, next) {
         next.whenOrNull(
           data: (status) {
             final store = ref.read(localStorageProvider);
-            store.reset();
+            // store.reset();
+            debugPrint('Location permission status: $status');
             if (status != LocationStatus.granted) {
               _go(AppInforRouter.permissionsPath);
             } else if (store.isFirstLaunch) {

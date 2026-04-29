@@ -2,7 +2,10 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui';
 
+import 'package:echo_nlu/core/utils/api_respone.dart';
+import 'package:echo_nlu/features/auth/providers/auth_provider.dart';
 import 'package:echo_nlu/features/map/widgets/top_panel_floating.dart';
+import 'package:echo_nlu/repositories/auth_repository.dart';
 import 'package:echo_nlu/repositories/echo_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,14 +15,14 @@ import 'package:trackasia_gl/trackasia_gl.dart';
 import '../models/echo_preview.dart';
 import 'map_home_state.dart';
 
-class MapHomeController extends Notifier<MapHomeState> {
+class MapHomeController extends AutoDisposeNotifier<MapHomeState> {
   TrackAsiaMapController? _mapController;
 
   static const LatLng nluCenter = LatLng(10.8711, 106.7933);
 
   static const double nluInsideRadiusInMeters = 1800;
   static const double nluNearRadiusInMeters = 2800;
-  static const double distanceToShowNearbyEchoesInMeters = 150;
+  static const double distanceToShowNearbyEchoesInMeters = 1000;
 
   static const double echoUnlockRadiusInMeters = 60;
   StreamSubscription<Position>? _positionSub;
@@ -39,10 +42,14 @@ class MapHomeController extends Notifier<MapHomeState> {
   @override
   MapHomeState build() {
     echoRepository = ref.read(echoRepositoryProvider);
+    ref.onDispose((){
+      debugPrint("Disposing MapHomeController, cancelling location subscription");
+      _positionSub?.cancel();
+    });
     Future.microtask(init);
+    listenUserLocation();
     return const MapHomeState(isLoadingLocation: true);
 
-    listenUserLocation();
   }
 
   Future<void> init() async {
@@ -182,6 +189,14 @@ class MapHomeController extends Notifier<MapHomeState> {
       longitude: state.userLocation!.longitude,
       latitude: state.userLocation!.latitude,
     );
+
+    if(!response.success && response.code == StatusCode.INVALID_REFRESH_TOKEN) {
+        state = state.copyWith(
+          errorMessage: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+        );
+        ref.read(loginControllerProvider.notifier).logout();
+        return;
+    }
 
     if (!response.success || response.data == null) {
       debugPrint("Failed to fetch echoes: ${response.message}");

@@ -16,6 +16,6 @@ final userLocationProvider = StreamProvider<Position>((ref) {
     );
 });
 
-final mapHomeProvider = NotifierProvider<MapHomeController, MapHomeState>(
-  MapHomeController.new,
+final mapHomeProvider = NotifierProvider.autoDispose<MapHomeController, MapHomeState>(
+  () => MapHomeController(),
 );

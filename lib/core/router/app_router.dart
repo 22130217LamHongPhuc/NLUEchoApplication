@@ -13,7 +13,7 @@ import '../../features/permission/screens/location_permission_screen.dart';
 import 'app_infor_router.dart';
 
 final appRouter = GoRouter(
-  initialLocation: AppInforRouter.homePath,
+  initialLocation: AppInforRouter.splashPath,
   routes: [
     GoRoute(
       path: AppInforRouter.splashPath,

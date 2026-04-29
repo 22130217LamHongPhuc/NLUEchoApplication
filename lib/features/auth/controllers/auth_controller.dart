@@ -1,4 +1,5 @@
 import 'package:echo_nlu/core/providers/core_providers.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/exception/app_exception.dart';
@@ -94,7 +95,7 @@ class AuthState {
 
 
 
-class AuthController extends AutoDisposeNotifier<AuthState> {
+class AuthController extends Notifier<AuthState> {
   late final AuthRepository _repository;
 
   @override
@@ -220,11 +221,10 @@ class AuthController extends AutoDisposeNotifier<AuthState> {
     );
 
    if(response.success) {
-     ref.read(localStorageProvider).saveToken(response.data!.token);
-     ref.read(localStorageProvider).saveToken(response.data!.refreshToken);
 
      state = state.copyWith(
        status: AuthStatus.authenticated,
+       clearGeneralError: true
      );
    } else {
      state = state.copyWith(
@@ -264,8 +264,20 @@ class AuthController extends AutoDisposeNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    await _repository.logout();
-    state = const AuthState(status: AuthStatus.unauthenticated);
+    debugPrint('logout with refresh token : ${ref.read(localStorageProvider).refreshToken}');
+    final response = await _repository.logout(ref.read(localStorageProvider).refreshToken);
+    ref.read(localStorageProvider).resetAuth();
+
+    if(response.success) {
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        clearGeneralError: true,
+      );
+    } else {
+      state = state.copyWith(
+        generalError: response.message,
+      );
+    }
   }
 
   void resetStatus() {
