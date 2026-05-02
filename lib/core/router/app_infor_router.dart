@@ -18,6 +18,10 @@ class AppInforRouter {
 
   static const String echoDetailName = 'echo_detail';
 
+  static const String echoHistoryPath = '/echo_history';
+
+  static const String echoHistoryName = 'echo_history';
+
 
 
 

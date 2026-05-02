@@ -2,6 +2,7 @@ import 'package:echo_nlu/core/enums/echo_type.dart';
 import 'package:echo_nlu/features/auth/screens/login_screen.dart';
 import 'package:echo_nlu/features/auth/screens/register_screen.dart';
 import 'package:echo_nlu/features/echo_detail/screens/echo_detail_screen.dart';
+import 'package:echo_nlu/features/history/screens/echo_history_screen.dart';
 import 'package:echo_nlu/features/onboarding/screens/flash_screen.dart';
 import 'package:echo_nlu/features/onboarding/screens/on_board_screen.dart';
 import 'package:flutter/cupertino.dart';
@@ -13,7 +14,7 @@ import '../../features/permission/screens/location_permission_screen.dart';
 import 'app_infor_router.dart';
 
 final appRouter = GoRouter(
-  initialLocation: AppInforRouter.splashPath,
+  initialLocation: AppInforRouter.echoHistoryPath,
   routes: [
     GoRoute(
       path: AppInforRouter.splashPath,
@@ -69,6 +70,12 @@ final appRouter = GoRouter(
             distance: 10.0,
           );
         }
+    ),
+
+    GoRoute(
+      path: AppInforRouter.echoHistoryPath,
+      name : AppInforRouter.echoHistoryName,
+      builder: (context, state) => EchoHistoryScreen()
     )
 
 
